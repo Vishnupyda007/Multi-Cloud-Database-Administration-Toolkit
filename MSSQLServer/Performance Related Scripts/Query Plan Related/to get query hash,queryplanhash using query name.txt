@@ -1,0 +1,15 @@
+SELECT 
+    qs.query_hash, 
+    qs.query_plan_hash, 
+    qs.total_worker_time, 
+    qs.total_elapsed_time, 
+    qs.total_logical_reads, 
+    qs.total_logical_writes, 
+    qs.execution_count, 
+    st.text 
+FROM 
+    sys.dm_exec_query_stats AS qs 
+CROSS APPLY 
+    sys.dm_exec_sql_text(qs.sql_handle) AS st 
+WHERE 
+    st.text LIKE '%USP_GET_PARTIALROUTEDROUTES%';

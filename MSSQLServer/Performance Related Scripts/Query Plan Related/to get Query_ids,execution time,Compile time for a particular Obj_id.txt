@@ -1,0 +1,12 @@
+SELECT 
+    q.query_id,
+    q.object_id,
+    qt.query_sql_text
+FROM 
+    sys.query_store_query q
+JOIN 
+    sys.query_store_query_text qt
+ON 
+    q.query_text_id = qt.query_text_id
+WHERE 
+    q.object_id ='717297665'
