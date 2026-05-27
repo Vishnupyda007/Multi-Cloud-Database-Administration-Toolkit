@@ -1,0 +1,1 @@
+select * from pg_settings where name like 'shared%' or name like 'work%'or name like 'temp%' or name like 'autovacuum%'
