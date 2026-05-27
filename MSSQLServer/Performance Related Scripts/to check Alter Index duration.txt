@@ -1,0 +1,21 @@
+--> Below TSQL can be used to query commandlog table created by Ola Hallengren’s Index Maintenance script to check Alter Index duration.
+
+select
+[DatabaseName]
+,[SchemaName]
+,[ObjectName]
+,[ObjectType]
+,[IndexName]
+,[IndexType]
+,[CommandType]
+,ExtendedInfo.value('(/ExtendedInfo/PageCount)[1]', 'int') as Page_Count,convert(decimal(5,2),ExtendedInfo.value('(/ExtendedInfo/Fragmentation)[1]', 'Float')) as Fragmentation
+, CAST(DATEDIFF(second, StartTime, EndTime) / 60 / 60 / 24 / 7 AS NVARCHAR(50)) + ':'
++ CAST(DATEDIFF(second, StartTime, EndTime) / 60 / 60 / 24 % 7 AS NVARCHAR(50)) + ':'
++ CAST(DATEDIFF(second, StartTime, EndTime) / 60 / 60 % 24 AS NVARCHAR(50)) + ':'
++ CAST(DATEDIFF(second, StartTime, EndTime) / 60 % 60 AS NVARCHAR(50)) + ':'
++ CAST(DATEDIFF(second, StartTime, EndTime) % 60 AS NVARCHAR(50)) + '' as "w:d:h:m:s"
+, DATEDIFF(second, StartTime, EndTime) [Duration in Sec]
+,[StartTime]
+,[EndTime]
+from [dbo].[Commandlog]
+order by DATEDIFF(second, StartTime, EndTime) desc

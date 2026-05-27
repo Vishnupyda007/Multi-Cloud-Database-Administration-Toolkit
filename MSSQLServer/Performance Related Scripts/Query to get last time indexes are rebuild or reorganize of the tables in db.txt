@@ -1,0 +1,25 @@
+---------Query that provides additional information about the last time indexes were rebuilt or reorganized, along with other useful details such as the type of operation and the user who performed it--------------
+
+SELECT 
+    OBJECT_NAME(i.object_id) AS TableName,
+    i.name AS IndexName,
+    i.type_desc AS IndexType,
+    us.last_user_update AS LastRebuildOrReorganize,
+    us.user_seeks,
+    us.user_scans,
+    us.user_lookups,
+    us.user_updates,
+    os.leaf_insert_count,
+    os.leaf_delete_count,
+    os.leaf_update_count,
+    os.nonleaf_insert_count,
+    os.nonleaf_delete_count,
+    os.nonleaf_update_count
+FROM 
+    sys.indexes i
+    INNER JOIN sys.dm_db_index_usage_stats us ON i.object_id = us.object_id AND i.index_id = us.index_id
+    INNER JOIN sys.dm_db_index_operational_stats(DB_ID(), NULL, NULL, NULL) os ON i.object_id = os.object_id AND i.index_id = os.index_id
+WHERE 
+    us.database_id = DB_ID()
+ORDER BY 
+    us.last_user_update DESC;

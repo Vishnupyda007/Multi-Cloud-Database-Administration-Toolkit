@@ -1,0 +1,7 @@
+----To get stats of a table----
+SP_helpstats N'tblName', 'ALL'
+ 
+--------
+set statistics time on
+set statistics io on      
+set statistics profile on

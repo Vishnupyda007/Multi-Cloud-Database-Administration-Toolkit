@@ -1,0 +1,172 @@
+>>>>>>>>>>>>INDEX rebuild performance improvement query<<<<<<<<<<<<
+
+
+> ALTER INDEX ALL ON SchemaName.TableName REBUILD  or ALTER INDEX INXname ON SchemaName.TableName REBUILD
+
+>Eg: ALTER INDEX ALL ON dbo.ModifyBOBRequestDetails REBUILD
+
+---if the table has heap and no other indexes, then to de fragment use---
+
+> ALTER table tableName Rebuild
+
+
+
+> Fragmentation is exists when indexes have pages in which the logical ordering, based on the key value, does not match the physical ordering inside the data file. Fragmentation is of two types> Internal and external fragmentation.
+
+>> By using the system function   "sys.dm_db_index_physical_stats" -   you can detect fragmentation in a specific index, all indexes on a table or indexed view, all indexes in a database, or all indexes in all the databases. It can also provide info on each partition.
+
+Note: We have to rebuild the index when the fragmentation is >30%. We can do index rebuild for a table through UI also but while doing UI method it will ask online or offline rebuild. If fragmentation is >5% and <=30% then use reogranize the index. Reorganize is always executed online.
+
+syntax: alter index all on schemaName.TblName Reorganize
+
+>> Never create duplicate indexes and dont create more indexes, as it hampers the performance.
+> Do not create indexes if the impact of missing index is not much example: 10-15% 
+but sometimes even the missing index around 5-15% can make difference and improve the performance.
+
+
+--------------Index creation--------------
+
+CREATE NONCLUSTERED INDEX INDXC_UserAccessDetails_UAM_ID
+ON [dbo].[UserAccessDetails] ([UAM_ID])
+
+
+> syntax for multiple columns index creation------------
+
+CREATE NONCLUSTERED INDEX [IX_TimeSheetMaster_Year_Month_CreatedBy] ON [dbo].[TimeSheetMaster]
+([Year] ASC,[Month] ASC,[CreatedBy] ASC)
+
+
+> syntax to drop the index of a table------
+
+
+DROP INDEX tblName.IndexName
+
+
+
+> INDXC represents name for the index that is getting created,UserAccessDetails- table name,UAM_ID- main column to which index is getting created.
+
+
+
+---------------New fragmentation Script to rebuild tables with Index Type'HEAP'------------------------
+
+
+SELECT DISTINCT
+    s.name + '.' + OBJECT_NAME(ind.OBJECT_ID) AS TableName, 
+    ind.name AS IndexName, 
+    indexstats.index_type_desc AS IndexType,
+    page_count, 
+    indexstats.avg_fragmentation_in_percent,
+    CASE 
+        WHEN indexstats.index_type_desc = 'HEAP' THEN 
+            'ALTER TABLE ' + s.name + '.' + OBJECT_NAME(ind.OBJECT_ID) + ' REBUILD'
+        ELSE 
+            'ALTER INDEX [' + ind.name + '] ON ' + s.name + '.[' + OBJECT_NAME(ind.OBJECT_ID) + '] REBUILD'
+    END AS RebuildScript
+FROM 
+    sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, NULL) indexstats 
+    INNER JOIN sys.indexes ind ON ind.object_id = indexstats.object_id 
+    AND ind.index_id = indexstats.index_id 
+    INNER JOIN sys.tables t ON ind.object_id = t.object_id
+    INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE 
+    indexstats.avg_fragmentation_in_percent >= 10 
+    AND page_count > 200
+ORDER BY 
+    page_count DESC, indexstats.avg_fragmentation_in_percent DESC;
+
+
+
+----OLD Fragmentation script---------------
+ 
+			  SELECT  DISTINCT
+              s.name+'.'+ OBJECT_NAME(ind.OBJECT_ID) AS TableName, 
+              ind.name AS IndexName, indexstats.index_type_desc AS IndexType,page_count, 
+              indexstats.avg_fragmentation_in_percent 
+              ,'ALTER INDEX  [' + ind.name + N'] ON ' +  s.name + N'.[' + OBJECT_NAME(ind.OBJECT_ID) + N'] REBUILD' AS RebuildScript
+FROM 
+              sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, NULL) indexstats 
+              INNER JOIN sys.indexes ind  ON ind.object_id = indexstats.object_id 
+              AND ind.index_id = indexstats.index_id 
+                       INNER JOIN sys.tables t ON ind.object_id = t.object_id
+                           INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE 
+              indexstats.avg_fragmentation_in_percent > =10 
+			  AND page_Count>200
+ORDER BY 
+             page_count desc, indexstats.avg_fragmentation_in_percent DESC
+
+
+ 
+------Outdated Statistics----------------------
+ 
+SELECT   distinct st.object_id    AS [Table ID], OBJECT_NAME(st.object_id)   AS [Table Name], 
+st.name   AS [Index Name], STATS_DATE(st.object_id, st.stats_id) AS [LastUpdated], modification_counter   AS [Rows Modified]
+,'UPDATE STATISTICS ['+  s.name +'].['+ OBJECT_NAME(st.object_id)+'] ['+st.name  +']  WITH fullscan ;' as updatescript
+FROM  sys.stats st CROSS APPLY   sys.dm_db_stats_properties(st.object_id, st.stats_id) AS sp
+INNER JOIN sys.tables t ON st.object_id = t.object_id
+INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE STATS_DATE(st.object_id, st.stats_id)<=DATEADD(DAY,-1,GETDATE())  
+AND modification_counter > 0 AND OBJECTPROPERTY(st.object_id,'IsUserTable')=1
+ 
+GO  
+
+
+--------Latest Updated Stats-------------------
+
+USE [OneC_1738]; -- Replace with your database name
+GO
+ 
+SELECT
+o.name AS TableName,
+s.name AS StatsName,
+s.user_created as user_created,
+s.auto_created as auto_created,
+    sp.last_updated AS LastUpdated,
+    --sp.rows AS RowCount,
+    sp.rows_sampled AS RowsSampled,
+    sp.steps AS StepsCount,
+    sp.unfiltered_rows AS UnfilteredRowCount,
+    sp.modification_counter AS ModificationCounter
+FROM
+    sys.stats AS s
+INNER JOIN
+    sys.objects AS o ON s.object_id = o.object_id
+OUTER APPLY
+    sys.dm_db_stats_properties(s.object_id, s.stats_id) AS sp
+WHERE
+    o.type = 'U' -- Filter for user tables only
+ORDER BY
+o.name, s.name;
+GO
+
+
+-----------or for particular object to get last updated stats date,sampling% and unflitered rows---------------
+
+SELECT sp.stats_id, name, filter_definition, last_updated, rows, rows_sampled, (rows_sampled*100/rows) Samplingpercentage, steps, unfiltered_rows, modification_counter 
+FROM sys.stats AS stat 
+CROSS APPLY sys.dm_db_stats_properties(stat.object_id, stat.stats_id) AS sp
+WHERE stat.object_id = object_id('UserAccessDetail');
+
+
+>--sp_updatestats  <run this sp after running update scripts given by above query.
+
+
+>------syntax update stats with fullscan (100% sampling)
+
+
+update statistics [dbo].[UserAccessDetail] with fullscan
+
+
+>------Update stats with sampling %-------------
+
+update statistics [dbo].[988_Details_TripSheet] with sample 80 percent
+
+
+
+
+> Also whenever a DB has performance issue or getting high CPU utilization, check the Stats and if stats are old, we need to update the stats.
+
+> to check execution plan in text format for an obj - set statistics time on set statistics io on set statistics profile on
+ 
+
+                                                                                                                                                                  

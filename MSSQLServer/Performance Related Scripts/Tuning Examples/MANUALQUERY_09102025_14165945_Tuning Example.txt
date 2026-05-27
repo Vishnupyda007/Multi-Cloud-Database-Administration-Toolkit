@@ -1,0 +1,149 @@
+To optimize the SQL query and improve its performance, we need to analyze the query and the underlying database structure. Below are some recommendations and steps to improve the execution time:
+
+---
+
+### 1. **Index Recommendations**
+   - **Check Indexes on `LastUpdatedDateTime` and `Project_ID`:**
+     - Since the query filters on `LastUpdatedDateTime` and orders by `Project_ID`, ensure that there is an **index** on these columns.
+     - Create a **composite index** if necessary:
+       ```sql
+       CREATE NONCLUSTERED INDEX IDX_LastUpdatedDateTime_ProjectID
+       ON [CRS_BASE_VW].[vw_centralRepository_Project] (LastUpdatedDateTime, Project_ID);
+       ```
+     - If `LastUpdatedDateTime` is already indexed, ensure the index is being used by the query.
+
+   - **Include Columns in the Index:**
+     - If the query is selecting many columns, consider including frequently accessed columns in the index to avoid lookups:
+       ```sql
+       CREATE NONCLUSTERED INDEX IDX_LastUpdatedDateTime_ProjectID_Include
+       ON [CRS_BASE_VW].[vw_centralRepository_Project] (LastUpdatedDateTime, Project_ID)
+       INCLUDE (Project_Name, Project_Start_Date, Project_End_Date, Status, Project_Type, City, Currency_Code, ...);
+       ```
+
+---
+
+### 2. **Partitioning**
+   - If the table is very large, consider **partitioning** the table based on `LastUpdatedDateTime`. This will allow the query to scan only the relevant partitions instead of the entire table.
+     - Example: Partition the table by year or month on `LastUpdatedDateTime`.
+
+---
+
+### 3. **Query Optimization**
+   - **Avoid SELECT *:** 
+     - The query is selecting many columns, which can lead to unnecessary data retrieval. Select only the columns that are required for the operation.
+     - Example:
+       ```sql
+       SELECT Project_ID, Project_Name, LastUpdatedDateTime
+       FROM [CRS_BASE_VW].[vw_centralRepository_Project]
+       WHERE LastUpdatedDateTime > CAST('2025-09-30 11:40:01.000' AS DATETIME)
+       ORDER BY Project_ID;
+       ```
+
+   - **Use NOLOCK (Optional):**
+     - If the table is not being updated frequently and dirty reads are acceptable, you can use the `WITH (NOLOCK)` hint to avoid locking overhead:
+       ```sql
+       FROM [CRS_BASE_VW].[vw_centralRepository_Project] WITH (NOLOCK)
+       ```
+
+   - **Avoid Functions on Columns:**
+     - Ensure that no functions are applied to indexed columns in the `WHERE` clause, as this can prevent index usage. For example:
+       ```sql
+       WHERE LastUpdatedDateTime > CAST('2025-09-30 11:40:01.000' AS DATETIME)
+       ```
+       is fine, but avoid:
+       ```sql
+       WHERE CONVERT(VARCHAR, LastUpdatedDateTime, 120) > '2025-09-30 11:40:01'
+       ```
+
+---
+
+### 4. **Materialized View (Indexed View)**
+   - If the query is frequently executed and the data does not change often, consider creating a **materialized view** (indexed view) to precompute and store the results:
+     ```sql
+     CREATE VIEW vw_Optimized_Project
+     WITH SCHEMABINDING
+     AS
+     SELECT Project_ID, LastUpdatedDateTime, ...
+     FROM [CRS_BASE_VW].[vw_centralRepository_Project];
+     
+     CREATE UNIQUE CLUSTERED INDEX IDX_vw_Optimized_Project
+     ON vw_Optimized_Project (Project_ID);
+     ```
+
+---
+
+### 5. **Batch Processing**
+   - If the query is processing a large dataset, consider breaking it into smaller batches to reduce memory and I/O pressure:
+     ```sql
+     DECLARE @BatchSize INT = 10000;
+     DECLARE @MinProjectID INT = (SELECT MIN(Project_ID) FROM [CRS_BASE_VW].[vw_centralRepository_Project]);
+     DECLARE @MaxProjectID INT = (SELECT MAX(Project_ID) FROM [CRS_BASE_VW].[vw_centralRepository_Project]);
+
+     WHILE @MinProjectID <= @MaxProjectID
+     BEGIN
+         SELECT Project_ID, Project_Name, LastUpdatedDateTime
+         FROM [CRS_BASE_VW].[vw_centralRepository_Project]
+         WHERE Project_ID BETWEEN @MinProjectID AND @MinProjectID + @BatchSize
+           AND LastUpdatedDateTime > CAST('2025-09-30 11:40:01.000' AS DATETIME)
+         ORDER BY Project_ID;
+
+         SET @MinProjectID = @MinProjectID + @BatchSize + 1;
+     END;
+     ```
+
+---
+
+### 6. **Statistics Update**
+   - Ensure that the statistics on the table are up-to-date. Outdated statistics can lead to poor query plans:
+     ```sql
+     UPDATE STATISTICS [CRS_BASE_VW].[vw_centralRepository_Project];
+     ```
+
+---
+
+### 7. **Execution Plan Analysis**
+   - Use the **execution plan** to identify bottlenecks (e.g., table scans, key lookups, etc.). Look for:
+     - Missing indexes.
+     - High-cost operations (e.g., sorts, hash joins).
+     - Table scans instead of index seeks.
+
+---
+
+### 8. **Error Handling**
+   - Add error handling to ensure the query does not fail silently:
+     ```sql
+     BEGIN TRY
+         SELECT Project_ID, Project_Name, LastUpdatedDateTime
+         FROM [CRS_BASE_VW].[vw_centralRepository_Project]
+         WHERE LastUpdatedDateTime > CAST('2025-09-30 11:40:01.000' AS DATETIME)
+         ORDER BY Project_ID;
+     END TRY
+     BEGIN CATCH
+         PRINT 'Error occurred: ' + ERROR_MESSAGE();
+     END CATCH;
+     ```
+
+---
+
+### 9. **Database Maintenance**
+   - Ensure that the database is well-maintained:
+     - Rebuild or reorganize indexes if they are fragmented.
+     - Check for blocking or deadlocks during query execution.
+
+---
+
+### Final Optimized Query
+Here’s an example of the optimized query:
+```sql
+SELECT Project_ID, Project_Name, LastUpdatedDateTime
+FROM [CRS_BASE_VW].[vw_centralRepository_Project] WITH (NOLOCK)
+WHERE LastUpdatedDateTime > CAST('2025-09-30 11:40:01.000' AS DATETIME)
+ORDER BY Project_ID;
+```
+
+---
+
+### Additional Notes
+- If the query is still slow after applying these optimizations, consider working with your DBA to analyze the database schema, indexes, and server performance.
+- If the view `[vw_centralRepository_Project]` is complex, consider optimizing the view itself or replacing it with a table if the data is static.
+

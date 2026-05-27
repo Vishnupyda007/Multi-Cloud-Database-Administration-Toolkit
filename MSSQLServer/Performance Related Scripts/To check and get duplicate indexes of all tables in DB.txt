@@ -1,0 +1,182 @@
+WITH CTE_INDEX_DATA AS (
+
+       SELECT
+
+			  SCHEMA_DATA.name AS schema_name,
+
+              TABLE_DATA.name AS table_name,
+
+              INDEX_DATA.name AS index_name,
+
+			  INDEX_DATA.type_desc as index_type,
+
+              STUFF((SELECT  ',' + COLUMN_DATA_KEY_COLS.name + ' ' + CASE 
+
+			  WHEN INDEX_COLUMN_DATA_KEY_COLS.is_descending_key = 1
+
+			  THEN 'DESC' ELSE 'ASC' END -- Include column order (ASC / DESC)
+
+              FROM    sys.tables AS T
+
+              INNER JOIN sys.indexes INDEX_DATA_KEY_COLS
+
+              ON T.object_id = INDEX_DATA_KEY_COLS.object_id
+
+              INNER JOIN sys.index_columns INDEX_COLUMN_DATA_KEY_COLS
+
+              ON INDEX_DATA_KEY_COLS.object_id = INDEX_COLUMN_DATA_KEY_COLS.object_id
+
+              AND INDEX_DATA_KEY_COLS.index_id = INDEX_COLUMN_DATA_KEY_COLS.index_id
+
+              INNER JOIN sys.columns COLUMN_DATA_KEY_COLS
+
+              ON T.object_id = COLUMN_DATA_KEY_COLS.object_id
+
+              AND INDEX_COLUMN_DATA_KEY_COLS.column_id = COLUMN_DATA_KEY_COLS.column_id
+
+              WHERE   INDEX_DATA.object_id = INDEX_DATA_KEY_COLS.object_id
+
+						AND INDEX_DATA.index_id = INDEX_DATA_KEY_COLS.index_id
+
+						AND INDEX_COLUMN_DATA_KEY_COLS.is_included_column = 0
+
+                                  ORDER BY INDEX_COLUMN_DATA_KEY_COLS.key_ordinal --COLUMN_DATA_KEY_COLS.name
+
+                                  FOR XML PATH('')), 1, 1, '') AS key_column_list ,
+
+          STUFF(( SELECT  ',' + COLUMN_DATA_INC_COLS.name
+
+                                  FROM    sys.tables AS T
+
+                                                INNER JOIN sys.indexes INDEX_DATA_INC_COLS
+
+                                                ON T.object_id = INDEX_DATA_INC_COLS.object_id
+
+                                                INNER JOIN sys.index_columns INDEX_COLUMN_DATA_INC_COLS
+
+                                                ON INDEX_DATA_INC_COLS.object_id = INDEX_COLUMN_DATA_INC_COLS.object_id
+
+                                                AND INDEX_DATA_INC_COLS.index_id = INDEX_COLUMN_DATA_INC_COLS.index_id
+
+                                                INNER JOIN sys.columns COLUMN_DATA_INC_COLS
+
+                                                ON T.object_id = COLUMN_DATA_INC_COLS.object_id
+
+                                                AND INDEX_COLUMN_DATA_INC_COLS.column_id = COLUMN_DATA_INC_COLS.column_id
+
+                                  WHERE   INDEX_DATA.object_id = INDEX_DATA_INC_COLS.object_id
+
+                                                AND INDEX_DATA.index_id = INDEX_DATA_INC_COLS.index_id
+
+                                                AND INDEX_COLUMN_DATA_INC_COLS.is_included_column = 1
+
+                                  ORDER BY INDEX_COLUMN_DATA_INC_COLS.key_ordinal
+
+                                  FOR XML PATH('')), 1, 1, '') AS include_column_list,
+
+       INDEX_DATA.is_disabled -- Check if index is disabled before determining which dupe to drop 
+
+       FROM sys.indexes INDEX_DATA
+
+       INNER JOIN sys.tables TABLE_DATA
+
+       ON TABLE_DATA.object_id = INDEX_DATA.object_id
+
+       INNER JOIN sys.schemas SCHEMA_DATA
+
+       ON SCHEMA_DATA.schema_id = TABLE_DATA.schema_id
+
+       WHERE TABLE_DATA.is_ms_shipped = 0
+
+       AND INDEX_DATA.type_desc IN ( 'CLUSTERED', 'NONCLUSTERED','CLUSTERED COLUMNSTORE','NONCLUSTERED COLUMNSTORE')
+
+)
+
+Select *
+
+Into #index
+
+from CTE_INDEX_DATA
+ 
+Select a.schema_name, a.table_name, a.index_name,a.index_type,a.key_column_list,a.include_column_list
+
+	, b.index_name as [SubsetOfIndex], b.key_column_list as [SubsetOfKeyColumnList], b.include_column_list as [SubsetOfIncludeColumnList], b.index_type as [SubsetOfIndexType]
+
+into #subset
+
+from #index a
+
+inner join #index b on a.schema_name = b.schema_name and a.table_name = b.table_name
+
+where --a.index_name <> b.index_name
+
+--and (case when ',' + b.key_column_list + ',' like '%,' + a.key_column_list + ',%' then 1 else 0 end) = 1
+
+--and 
+
+CHARINDEX(a.key_column_list, b.key_column_list, 1) = 1
+
+and (a.include_column_list is null OR CHARINDEX(isnull(a.include_column_list,''), isnull(b.include_column_list,''), 1) = 1)
+
+--and a.index_type = b.index_type
+
+and a.index_type = 'NONCLUSTERED'
+ 
+select *
+
+into #consolidated
+
+from (
+
+	select *, row_number() over(partition by schema_name, table_name, index_name order by (case when [SubsetOfIndexType] = 'CLUSTERED' then 1 else 2 end), len([SubsetOfKeyColumnList]) desc,len([SubsetOfIncludeColumnList]) desc, [SubsetOfIndex]) as RN 
+
+	from #subset
+
+) tbl
+
+where RN = 1
+ 
+ 
+select schema_name, table_name, index_name, index_type, key_column_list, include_column_list, is_disabled, RN,
+
+case when RN = 1 then 'N' else 'Y' end as Safe_to_delete --into Overlapped_index
+
+from (
+
+	select *
+
+		,row_number() over(partition by tbl.schema_name, tbl.table_name, tbl.SubSetOf order by (case when tbl.index_type = 'CLUSTERED' then 1 else 2 end), len(tbl.key_column_list) desc, len(tbl.include_column_list) desc, tbl.index_name) as RN
+
+		--,tbl.index_name, tbl.index_type,tbl.SubSetOf, tbl.key_column_list, tbl.include_column_list, tbl.SubsetOfKeyColumnList, tbl.SubsetOfIncludeColumnList
+
+	from (
+
+		select b.SubsetOfIndex,b.SubsetOfKeyColumnList, b.SubsetOfIncludeColumnList
+
+		,isnull(b.SubsetOfIndex, a.index_name) as SubSetOf --,isnull(b.SubsetOfKeyColumnList, a.key_column_list) as SubSetOfColumn
+
+		,a.*
+
+		--select row_number() over(partition by a.schema_name, a.table_name,a.index_type, a.SubSetOf order by len(key_column_list) desc) as RN
+
+		--	,a.Index_type,a.index_name, a.key_column_list, a.include_column_list, b.SubsetOfKeyColumnList, b.SubsetOfIncludeColumnList
+
+		from #index a
+
+		left join #consolidated b on a.schema_name = b.schema_name and a.table_name = b.table_name and a.index_name = b.index_name --and a.index_type = b.index_type
+
+		--order by a.schema_name, a.table_name, a.index_name, a.index_type
+
+	) tbl
+
+) tblout
+---where table_name='CentralRepository_HCMLocation_MIG'
+order by schema_name, table_name,SubSetOf, RN
+ 
+drop table #index
+
+drop table #subset
+
+drop table #consolidated
+
+ 

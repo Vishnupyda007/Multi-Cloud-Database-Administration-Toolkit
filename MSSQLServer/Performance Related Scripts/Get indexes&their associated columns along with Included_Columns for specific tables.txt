@@ -1,0 +1,20 @@
+-- Script to get indexes and their associated columns for specific tables
+SELECT 
+    t.name AS TableName,
+    i.name AS IndexName,
+    i.type_desc AS IndexType,
+    c.name AS ColumnName,
+    ic.is_included_column AS IsIncludedColumn,
+    ic.is_descending_key AS IsDescending
+FROM 
+    sys.tables t
+INNER JOIN 
+    sys.indexes i ON t.object_id = i.object_id
+INNER JOIN 
+    sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+INNER JOIN 
+    sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+WHERE 
+    t.name IN ('SFDC_Account_STG_CURR', 'CentralRepository_SFDC_Account') -- Replace with your table names
+ORDER BY 
+    t.name, i.name, ic.index_column_id;

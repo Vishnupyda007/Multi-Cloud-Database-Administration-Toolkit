@@ -1,0 +1,44 @@
+The `sp_recompile` system stored procedure in SQL Server is used to **mark a stored procedure, trigger, table, or user-defined function** for recompilation the next time it is run. This can be useful when:
+
+- The execution plan might be outdated.
+- Statistics have changed significantly.
+- You want to ensure the most optimal plan is generated for the next execution.
+
+---
+
+### 🔧 Syntax
+
+```sql
+EXEC sp_recompile 'object_name';
+```
+
+- `'object_name'` can be the name of a stored procedure, trigger, table, or user-defined function.
+- It must be in the format `[schema_name].[object_name]` if not in the default schema.
+
+---
+
+### ✅ Example: Recompile a Stored Procedure
+
+```sql
+EXEC sp_recompile 'dbo.usp_GetCustomerOrders';
+```
+
+This tells SQL Server to discard the current execution plan for `usp_GetCustomerOrders` and recompile it the next time it runs.
+
+---
+
+### 🧠 When to Use `sp_recompile`
+
+- After significant data changes that might affect query plans.
+- When performance degrades and you suspect a suboptimal cached plan.
+- After index changes or updates to statistics.
+- When deploying changes to a procedure that might affect its logic or performance.
+
+---
+
+### ⚠️ Notes
+
+- It does **not** immediately recompile the object—it just marks it for recompilation on the next execution.
+- It does **not** affect other cached plans unless they reference the same object.
+
+Would you like a script that recompiles all stored procedures in a database?
