@@ -1,0 +1,20 @@
+SELECT 
+--alert_id	
+--,status	
+--,agent_type	
+--,agent_id	
+--,error_id		
+publisher	
+publisher_db	
+,publication
+,alert_error_text
+,alert_error_code
+,article
+--,publication_type	
+,subscriber	
+,subscriber_db	
+--,destination_object	
+--,source_object		
+,time
+FROM msdb.dbo.sysreplicationalerts WHERE time >= DATEADD(MINUTE, -30, GETDATE())
+--ORDER BY time DESC

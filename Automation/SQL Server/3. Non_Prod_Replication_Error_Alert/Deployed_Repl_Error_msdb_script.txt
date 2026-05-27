@@ -1,0 +1,50 @@
+use [DBAdmin]
+go
+IF OBJECT_ID('dbo.Non_Prod_REPL_ERRORS_TBL_Email','U') IS NOT NULL
+TRUNCATE TABLE [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail] --truncate old data in the table
+go
+insert into [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+publisher
+,publisher_db
+,ISNULL(publication, 'NULL') AS publication
+,alert_error_text
+,alert_error_code
+,ISNULL(article, 'NULL') AS article
+,subscriber
+,subscriber_db
+,time
+FROM [CTSC01048403401\CRSSIT].[msdb].[dbo].sysreplicationalerts WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+go
+
+insert into [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+publisher
+,publisher_db
+,ISNULL(publication, 'NULL') AS publication
+,alert_error_text
+,alert_error_code
+,ISNULL(article, 'NULL') AS article
+,subscriber
+,subscriber_db
+,time
+FROM [CTSC01048405301\CRSUAT].[msdb].[dbo].sysreplicationalerts WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+go
+
+INSERT INTO [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+    publisher,
+    publisher_db,
+    ISNULL(publication, 'NULL') AS publication,
+    alert_error_text,
+    alert_error_code,
+    ISNULL(article, 'NULL') AS article,
+    subscriber,
+    subscriber_db,
+    time
+FROM [ctsazsimisgntm1.inso13dfbbbfa2150.database.windows.net].[msdb].[dbo].sysreplicationalerts
+WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+GO

@@ -1,0 +1,45 @@
+WITH LastRun AS (
+    SELECT DISTINCT
+        job_id,
+        MAX(msdb.dbo.agent_datetime(run_date, run_time)) AS LastRunTime
+    FROM 
+        msdb.dbo.sysjobhistory
+    GROUP BY 
+        job_id
+)
+SELECT distinct
+    @@SERVERNAME as ServerName, 
+    j.name AS JobName,
+    msdb.dbo.agent_datetime(h.run_date, h.run_time) AS LastRun_StartTime,
+    DATEADD(SECOND, h.run_duration % 100 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration / 10000) * 3600, 
+            msdb.dbo.agent_datetime(h.run_date, h.run_time)) AS LastRun_EndTime,
+    CASE
+	    when j.enabled =1 then 'Enabled'
+		else 'Disabled'
+    END AS 'Job_Enable_Status',
+    CASE 
+        WHEN h.run_status =0 THEN 'Failed'
+        when h.run_status =1 then 'Successful Run'
+		when h.run_status =2 then 'Retry'
+		when h.run_status =3 then 'Canceled'
+		else 'In Progress'
+    END AS Job_LastRun_Status,
+	CAST(cast(js.next_run_date as CHAR(8)) as date) as Next_Run_Date
+FROM 
+    msdb.dbo.sysjobs j
+INNER JOIN 
+    msdb.dbo.sysjobhistory h ON j.job_id = h.job_id
+LEFT JOIN 
+    msdb.dbo.sysjobsteps s ON h.job_id = s.job_id AND h.step_id = s.step_id
+INNER JOIN 
+    LastRun lr ON h.job_id = lr.job_id AND msdb.dbo.agent_datetime(h.run_date, h.run_time) = lr.LastRunTime
+inner join msdb.dbo.sysjobschedules js on j.job_id = js.job_id
+WHERE 
+    --j.enabled = 1 -- Only enabled jobs 
+	--js.next_run_time <>0 and 
+	js.next_run_date<>0
+	and j.name in ('IndexOptimize - USER_DATABASES','update_stats')
+ORDER BY ServerName,LastRun_StartTime;
+
+
+

@@ -1,0 +1,172 @@
+USE [msdb]
+GO
+
+/****** Object:  Job [Error_Msg]    Script Date: 1/15/2025 4:10:21 PM ******/
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+/****** Object:  JobCategory [[Uncategorized (Local)]]    Script Date: 1/15/2025 4:10:21 PM ******/
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'[Uncategorized (Local)]' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'[Uncategorized (Local)]'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'Error_Msg', 
+		@enabled=1, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'[Uncategorized (Local)]', 
+		@owner_login_name=N'crsdba', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Truncate Table [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]]    Script Date: 1/15/2025 4:10:21 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Truncate Table [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'TRUNCATE TABLE [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]', 
+		@database_name=N'DBAdmin', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Non_Prod_Replication_Error_Msg_CRSSIT]    Script Date: 1/15/2025 4:10:21 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Non_Prod_Replication_Error_Msg_CRSSIT', 
+		@step_id=2, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'insert into [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+publisher
+,publisher_db
+,publication
+,alert_error_text
+,alert_error_code
+,article
+,subscriber
+,subscriber_db
+,time
+FROM [CTSC01048403401\CRSSIT].[msdb].[dbo].sysreplicationalerts WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+go', 
+		@database_name=N'msdb', 
+		@flags=12
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [CRSUAT_Replication_Error_Msg]    Script Date: 1/15/2025 4:10:21 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'CRSUAT_Replication_Error_Msg', 
+		@step_id=3, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'insert into [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+publisher
+,publisher_db
+,publication
+,alert_error_text
+,alert_error_code
+,article
+,subscriber
+,subscriber_db
+,time
+FROM [msdb].[dbo].sysreplicationalerts WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+go', 
+		@database_name=N'msdb', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [Sgntm1_Replication_Error_Msg]    Script Date: 1/15/2025 4:10:21 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Sgntm1_Replication_Error_Msg', 
+		@step_id=4, 
+		@cmdexec_success_code=0, 
+		@on_success_action=3, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'INSERT INTO [DBAdmin].[dbo].[Non_Prod_Replication_Error_Alert_Mail]
+SELECT 	
+    publisher,
+    publisher_db,
+    ISNULL(publication, ''NULL'') AS publication,
+    alert_error_text,
+    alert_error_code,
+    ISNULL(article, ''NULL'') AS article,
+    subscriber,
+    subscriber_db,
+    time
+FROM [ctsazsimisgntm1.inso13dfbbbfa2150.database.windows.net].[msdb].[dbo].sysreplicationalerts
+WHERE time >= DATEADD(MINUTE, -15, GETDATE())
+--ORDER BY time DESC
+GO
+
+
+
+', 
+		@database_name=N'DBAdmin', 
+		@flags=12
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+/****** Object:  Step [SP]    Script Date: 1/15/2025 4:10:21 PM ******/
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'SP', 
+		@step_id=5, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'EXEC USP_Non_Prod_Replication_Error_Alert', 
+		@database_name=N'DBAdmin', 
+		@flags=0
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 2
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'Runs every 30mins', 
+		@enabled=0, 
+		@freq_type=4, 
+		@freq_interval=1, 
+		@freq_subday_type=4, 
+		@freq_subday_interval=30, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=0, 
+		@active_start_date=20241213, 
+		@active_end_date=99991231, 
+		@active_start_time=0, 
+		@active_end_time=235959, 
+		@schedule_uid=N'e63bedb0-f5b0-47c3-833b-0d104770b9ab'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+GO
+
+
