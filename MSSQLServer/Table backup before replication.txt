@@ -1,0 +1,3 @@
+To take table backup before adding it to replication
+
+select * into mytable_backup from mytable

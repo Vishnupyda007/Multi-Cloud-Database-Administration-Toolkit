@@ -1,0 +1,5 @@
+To get the create script used for the creation of any user - 
+
+exec sp_help_revlogin 'user-name'
+
+Eg - exec sp_help_revlogin 'EDSUser'

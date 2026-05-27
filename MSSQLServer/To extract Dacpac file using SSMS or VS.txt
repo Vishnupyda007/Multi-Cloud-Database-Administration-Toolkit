@@ -1,0 +1,45 @@
+Visual studio 2019/2022- Extract for MI Servers works in VS 2019/2022/latest version whereas Onprem works in VS 2015 as well - "you can use VDI for VS 2022"
+
+
+Step 1- Select SQL Server Database Project.
+
+Step 2 - Open Server explorer -> select SQL databases.
+
+Step 3 - Right click -> Open SQL server Object explorer.
+
+Step 4 - Right click on SQL Server -> Add SQL Server -> Enter the server details -> Keep the database as default
+
+Step 5 - Select the database -> right click -> Extract Data Tier Application -> Select the target to save the file
+
+
+
+-----------OR using SSMS------
+
+Step-1: Connect to the Server in SSMS
+
+Step-2: Right click on required Database  --> go to tasks  --> click on Extract Data Tier Application(DAC).
+
+Step-3: Select the target to save the file
+
+
+
+DACPAC file- Data Tier APplication Package file
+>>DACPAC – A data-tier application (DAC) is a logical database entity that defines all of the SQL Server objects - such as tables, views, and instance objects, including logins - associated with a user's database. A DAC is a self-contained unit of the entire database model and is portable in an artifact known as a DAC package, or .dacpac. Data-tier applications are the build artifact from SQL database projects and can be used as part of a comprehensive database lifecycle management and DevOps strategy.
+The .dacpac can be used to update a database with new or modified objects, to revert to a previous version of the database, or to provision an entirely new database.
+Data-Tier Application Package is a zip file that contains a data model (database objects). This file is compatible with the (SQL Server data tools) SSDT database project. It is also used for SQL Server/Azure SQL database versioning and deployments using Azure DevOps CI-CD pipelines.
+
+
+
+
+>>DACPAC is focused on capturing and deploying schema, It doesn't contain the table data. If you want to include the data, make a BACPAC file instead. It contains the data and the schema.
+ 
+>> Usage of BACPAC file- to create a copy of the original database, with the data, on a new instance of the Database Engine, or to Azure SQL Database
+
+
+
+>>>Reference:
+https://learn.microsoft.com/en-us/sql/relational-databases/data-tier-applications/data-tier-applications?view=sql-server-ver16
+https://www.sqlshack.com/an-introduction-to-data-tier-applications-in-sql-server/
+https://azureops.org/articles/dacpac-sql-server-database/
+https://unogeeks.com/dacpac-azure-devops/#:~:text=In%20the%20context%20of%20Azure,a%20streamlined%20and%20consistent%20manner
+

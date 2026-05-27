@@ -1,0 +1,13 @@
+for db restore in on prem server
+we can use the ui method 
+
+steps are as follows :
+
+right click -> tasks -> restore -> database 
+-> select device -> go to the backup path and add it -> 
+go to options -> (1) in RESTORE OPT.- select 1st opt. overwrite existing database
+untick tail log backup
+-> (2) TAIL LOG Backup - untick that
+-> (3) SERVER CONNECTIONS - untick that
+
+

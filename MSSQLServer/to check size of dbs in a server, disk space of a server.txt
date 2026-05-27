@@ -1,0 +1,6 @@
+> to check size rof dbs in a server 
+# sp_helpdb
+
+
+> to check disk space in a server
+# xp_fixeddrives

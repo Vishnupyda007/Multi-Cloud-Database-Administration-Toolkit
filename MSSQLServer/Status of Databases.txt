@@ -1,0 +1,3 @@
+select name,databasepropertyex(name, 'status') [status]  from sysdatabases
+          ---------------OR--------------
+select name from sys.databases where state_desc = 'online'

@@ -1,0 +1,28 @@
+/*To check constraint status*/
+
+SELECT	OBJECT_NAME(RKEYID) AS REFERENCED_TABLE_NAME,
+		OBJECT_NAME(FKEYID) AS CHILD_TABLE_NAME,
+OBJECT_NAME(CONSTID) AS CONSTRAINT_NAME,
+COL_NAME(FKEYID, FKEY) AS COLUMN_NAME,
+COL_NAME(RKEYID, RKEY) AS REFERENCED_COLUMN_NAME,
+		(CASE
+WHEN OBJECTPROPERTY(CONSTID, 'CNSTISDISABLED') = 0 THEN 'ENABLED'
+ELSE 'DISABLED'
+END) AS STATUS
+FROM SYSFOREIGNKEYS
+ORDER BY CHILD_TABLE_NAME, CONSTRAINT_NAME,REFERENCED_TABLE_NAME, KEYNO;
+
+---- Disable all constraints in a table--
+--ALTER TABLE TableName NOCHECK CONSTRAINT ALL
+---- Enable all constraints in a table ------
+--ALTER TABLE TableName CHECK CONSTRAINT ALL
+---- ----------
+---- Disable single constraint
+--ALTER TABLE TableName NOCHECK CONSTRAINT Constraintname
+---- Enable single constraint
+--ALTER TABLE TableName CHECK CONSTRAINT Constraintname
+---- ----------
+---- Disable all constraints for database
+--EXEC sp_msforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT all';
+---- Enable all constraints for database
+--EXEC sp_msforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all';

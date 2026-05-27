@@ -1,0 +1,3 @@
+To get the list of all the sql logins and their details
+
+SELECT * FROM MASTER.SYS.SQL_LOGINS

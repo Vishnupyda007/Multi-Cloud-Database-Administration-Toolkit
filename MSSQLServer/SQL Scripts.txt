@@ -1,0 +1,35 @@
+-------------------- SQL Scripts -------------------------
+
+
+> to check count of cols of table in Schema
+
+# select count(column_name) from information_schema.columns where table_name='table_name'
+
+
+
+>>>>>>sp_helpdb - databse details
+
+
+>>>>>>>>>xp_fixeddrives - drive space 
+
+
+
+>>>>>>>>>>>To create and Grant access/Permssions for MSI key
+
+create user [1716-MSI-NP] from external provider
+Alter role [db_datawriter] add member [1716-MSI-NP]
+grant execute to [1716-MSI-NP]
+
+
+
+>>>>>> Create user [id-App-NP] from external provider
+
+
+
+>>>>>>> steps to create AAD account
+# AAD account needs userName and doesnt require password.
+
+
+
+>>>>> script to get specific Sp script text
+# Sp_helptext SpName  -- used to get script text of specific Sp

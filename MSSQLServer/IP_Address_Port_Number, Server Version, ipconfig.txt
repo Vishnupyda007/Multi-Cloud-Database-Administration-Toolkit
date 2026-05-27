@@ -1,0 +1,45 @@
+select @@version to get sql version
+
+
+-- Returns full version string
+SELECT @@VERSION AS FullVersion;
+-- Returns specific properties
+SELECT
+   SERVERPROPERTY('ProductVersion') AS ProductVersion, -- e.g., 16.0.4225.2
+   SERVERPROPERTY('ProductLevel') AS ProductLevel, -- e.g., RTM, CUxx
+   SERVERPROPERTY('Edition') AS Edition, -- SQL Azure
+   SERVERPROPERTY('EngineEdition') AS EngineEdition, -- 8 for Managed Instance
+   SERVERPROPERTY('ProductUpdateLevel') AS ProductUpdateLevel, -- e.g., CU22
+   SERVERPROPERTY('ProductUpdateType') AS ProductUpdateType; -- CU or Continuous
+
+
+===== GET THE IP ADDRESS/PORT NUMBER OF SERVER ====
+
+CMD command - ping servername  [eg - ping CTSINAZSINCDDB1]
+
+SQL Query - 
+
+SELECT SERVERNAME = CONVERT(NVARCHAR(128),SERVERPROPERTY('SERVERNAME')) ,local_tcp_port
+,LOCAL_NET_ADDRESS AS 'IPAddressOfSQLServer'
+FROM SYS.DM_EXEC_CONNECTIONS WHERE SESSION_ID = @@SPID
+
+
+================= OR ======================
+ 
+SELECT LOCAL_NET_ADDRESS, LOCAL_TCP_PORT
+FROM SYS.DM_EXEC_CONNECTIONS
+WHERE LOCAL_NET_ADDRESS IS NOT NULL ;
+
+
+
+------------PORT--
+
+SELECT DISTINCT 
+    local_tcp_port,*
+FROM sys.dm_exec_connections 
+WHERE local_tcp_port IS NOT NULL
+
+
+-------------
+
+Run ipconfig to know current IP of Vm or Jump Server/vdi

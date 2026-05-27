@@ -1,0 +1,42 @@
+EXECUTE AS user = 'CTS\SdeQosnp'
+EXECUTE [dbo].[Usp_SSIS_PackageExecution_QOS] 'QOS_SSIS','QoS_SSIS','QOS_RawData.dtsx'
+REVERT
+
+
+
+In SQL Server, you cannot directly execute a SELECT statement as a different user using a simple SQL command like SELECT ... AS USER. However, there are some ways to simulate or achieve this behavior, depending on your needs and permissions:
+
+### 1. EXECUTE AS Statement
+
+SQL Server provides the EXECUTE AS statement, which allows you to impersonate another user’s security context for the duration of a session, module, or batch. You can use this to run queries as if you were another user (provided you have the necessary permissions).
+
+**Example:**
+```sql
+EXECUTE AS USER = 'OtherUser';
+SELECT * FROM dbo.YourTable;
+REVERT; -- returns to your original context
+```
+
+- `OtherUser`: The username you want to impersonate.
+- `REVERT`: Returns you to your original security context.
+
+**Notes:**
+- The impersonated user must exist in the database.
+- You need IMPERSONATE permission on that user.
+- Some restrictions may apply for certain operations or roles.
+
+### 2. Application-Level Impersonation
+
+Alternatively, you can connect to SQL Server using the credentials of the desired user from your application or tool, and run your SELECT statement.
+
+### 3. Limitations
+
+- Impersonation does not change the underlying connection’s login; it only changes the execution context within SQL Server.
+- Some server-level permissions cannot be impersonated using EXECUTE AS.
+
+---
+
+**Summary:**  
+You can use EXECUTE AS USER = 'username' to run SELECT (or other) statements as another user if you have permission to impersonate that user. Always end with REVERT to restore your original context.
+
+Let me know if you’d like more examples or details about specific scenarios!

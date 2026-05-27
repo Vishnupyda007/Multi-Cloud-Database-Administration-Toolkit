@@ -1,0 +1,17 @@
+===== BACKUP IN ON PREM_AZURE SERVER =====
+
+===== STEPS ===== 
+
+Connect server -> Db to be backed up -- right click --> tasks -> backup ->
+[in general tab]change the destination* -> after selecting path give the name of backup
+as dbname_env_yyyymmdd.bak -> [in backup options tab] ->
+set backup compression as compress backup -> Give ok
+
+Note-
+* the destination is to be 'Backup' folder in any drive.
+
+===== SCRIPT =====  
+
+BACKUP DATABASE [OneC_2451_GDPR] TO  DISK = N'F:\Backup\OneC_2451_GDPR_UAT_20220505.bak' WITH NOFORMAT, NOINIT,  
+NAME = N'OneC_2451_GDPR-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, COMPRESSION,  STATS = 25
+GO

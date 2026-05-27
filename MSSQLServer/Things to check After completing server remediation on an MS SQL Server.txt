@@ -1,0 +1,42 @@
+After completing server remediation on an MS SQL Server, it's important to perform a series of checks to ensure that the server is functioning correctly and securely. Here are some key things to consider:
+
+1. **Verify Connectivity**: Ensure that the SQL Server instance can be accessed by the intended clients and applications.
+
+2. **Check Services**: Confirm that all necessary SQL Server services are running as expected.
+
+3. **Review Error Logs**: Examine the SQL Server error logs for any unusual entries that might indicate problems.
+
+4. **Database Integrity**: Run `DBCC CHECKDB` on your databases to check for consistency errors and to ensure the logical and physical integrity of all the objects in the specified database².
+
+5. **Backup Verification**: If backups were restored as part of the remediation, verify that they have been restored successfully and that the data is accurate.
+
+6. **Security Settings**: Review the security settings and permissions to make sure they align with your organization's policies. You can use the SQL Server Vulnerability Assessment tool to scan for security issues and deviations from best practices³.
+
+7. **Performance Metrics**: Monitor performance metrics to ensure that the server is operating within the expected parameters. Look for any significant changes in response times or resource usage.
+
+8. **Scheduled Jobs**: Check the status of any scheduled jobs to confirm they are running as planned.
+
+9. **System Databases**: Ensure that system databases (master, model, msdb, and tempdb) are intact and functioning properly.
+
+10. **SQL Agent**: If SQL Server Agent is used, verify that it is running and that all jobs are executing successfully.
+
+11. **Resource Utilization**: Monitor CPU, memory, disk I/O, and network usage to detect any bottlenecks or unusual activity.
+
+12. **Update Statistics**: Update statistics to ensure the query optimizer has current information, which can help improve query performance.
+
+13. **Review Configuration Settings**: Check the SQL Server configuration settings to ensure they are set according to the best practices and your organization's requirements.
+A) check encrytion of DBs and turstworthy of DBs.
+
+14. **High Availability**: If features like Always On Availability Groups or replication are used, ensure they are configured correctly and functioning as expected.
+
+15. **Ask the Users to check whether they are able to access their respectivity Databases.
+
+By conducting these checks, you can help ensure that your SQL Server environment is secure, reliable, and performing optimally after server remediation.
+
+Source: Conversation with Copilot, 8/7/2024
+(1) What is a good way to verify that a restore completed successfully in .... https://dba.stackexchange.com/questions/10084/what-is-a-good-way-to-verify-that-a-restore-completed-successfully-in-sql-server.
+(2) Vulnerability assessment for SQL Server - SQL Server | Microsoft Learn. https://learn.microsoft.com/en-us/sql/relational-databases/security/sql-vulnerability-assessment?view=sql-server-ver16.
+(3) Monitoring the progress of an SQL query in SQL SERVER. https://stackoverflow.com/questions/3289670/monitoring-the-progress-of-an-sql-query-in-sql-server.
+(4) Restore and recovery overview (SQL Server) - SQL Server | Microsoft Learn. https://learn.microsoft.com/en-us/sql/relational-databases/backup-restore/restore-and-recovery-overview-sql-server?view=sql-server-ver16.
+(5) undefined. https://serverfault.com/questions/187869/should-i-run-dbcc-checkdb-before-full-backups-or-after.
+(6) undefined. http://social.technet.microsoft.com/wiki/contents/articles/28253.restore-sql-database-to-an-ag-with-powershell.aspx.

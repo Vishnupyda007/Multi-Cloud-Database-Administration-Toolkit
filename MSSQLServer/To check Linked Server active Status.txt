@@ -1,0 +1,14 @@
+----------Need to run in Source------------
+
+SELECT *
+FROM sys.servers
+LEFT JOIN sys.linked_logins
+ON sys.servers.server_id = sys.linked_logins.server_id
+WHERE is_linked = 1;
+
+
+
+----------
+In your SQL query, the condition is_linked = 1 in the WHERE clause is used to filter the results to only include rows where the is_linked column has a value of 1. This typically indicates that the server is a linked server.
+
+In SQL Server, a linked server allows you to connect to and execute commands against OLE DB data sources on different servers. The is_linked column is likely a flag that indicates whether a server is linked (1 for linked, 0 for not linked).

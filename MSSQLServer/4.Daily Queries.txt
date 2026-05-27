@@ -1,0 +1,1275 @@
+MI Master replication alerts mail configured server: 10.232.210.51
+
+sp_who @loginame='sa'
+
+-----------active sessions
+SELECT s.session_id, s.login_time, s.host_name, s.program_name,
+s.login_name, s.nt_user_name, s.is_user_process,
+s.database_id, DB_NAME(s.database_id) AS [database], 
+s.status,
+s.reads, s.writes, s.logical_reads, s.row_count,
+c.session_id, c.net_transport, c.protocol_type, 
+c.client_net_address, c.client_tcp_port, 
+c.num_writes AS DataPacketWrites 
+FROM sys.dm_exec_sessions s
+INNER JOIN sys.dm_exec_connections c
+ON s.session_id = c.session_id 
+INNER JOIN sys.dm_exec_requests r 
+ON s.session_id = r.session_id
+
+--------------database log reuse details
+select log_reuse_wait_desc,* from sys.databases
+
+---------------blocks simple query
+select * from sys.sysprocesses where blocked<>0 and spid>50
+
+------------------------------------blocking
+SET NOCOUNT ON
+GO
+SELECT SPID, BLOCKED, REPLACE (REPLACE (T.TEXT, CHAR(10), ' '), CHAR (13), ' ' ) AS BATCH
+INTO #T
+FROM sys.sysprocesses R CROSS APPLY sys.dm_exec_sql_text(R.SQL_HANDLE) T
+GO
+WITH BLOCKERS (SPID, BLOCKED, LEVEL, BATCH)
+AS
+(
+SELECT SPID,
+BLOCKED,
+CAST (REPLICATE ('0', 4-LEN (CAST (SPID AS VARCHAR))) + CAST (SPID AS VARCHAR) AS VARCHAR (1000)) AS LEVEL,
+BATCH FROM #T R
+WHERE (BLOCKED = 0 OR BLOCKED = SPID)
+AND EXISTS (SELECT * FROM #T R2 WHERE R2.BLOCKED = R.SPID AND R2.BLOCKED <> R2.SPID)
+UNION ALL
+SELECT R.SPID,
+R.BLOCKED,
+CAST (BLOCKERS.LEVEL + RIGHT (CAST ((1000 + R.SPID) AS VARCHAR (100)), 4) AS VARCHAR (1000)) AS LEVEL,
+R.BATCH FROM #T AS R
+INNER JOIN BLOCKERS ON R.BLOCKED = BLOCKERS.SPID WHERE R.BLOCKED > 0 AND R.BLOCKED <> R.SPID
+)
+SELECT N'    ' + REPLICATE (N'|         ', LEN (LEVEL)/4 - 1) +
+CASE WHEN (LEN(LEVEL)/4 - 1) = 0
+THEN 'HEAD -  '
+ELSE '|------  ' END
++ CAST (SPID AS NVARCHAR (10)) + N' ' + BATCH AS BLOCKING_TREE
+FROM BLOCKERS ORDER BY LEVEL ASC
+GO
+DROP TABLE #T
+GO
+-------------------------------------------------------
+-------------------------------------------------------
+-- List down all the blocking process or root blockers
+    SELECT  DISTINCT p1.spid  AS [Blocking/Root Blocker SPID]
+         , p1.[loginame] AS [RootBlocker_Login]
+	 , st.text AS [SQL Query Text]
+         , p1.[CPU]
+         , p1.[Physical_IO]
+         , DB_NAME(p1.[dbid]) AS DBName
+         , p1.[Program_name]
+         , p1.[HostName]
+         , p1.[Status]
+         , p1.[CMD]
+         , p1.[Blocked]
+         , p1.[ECID] AS [ExecutionContextID]
+    FROM  sys.sysprocesses p1
+	INNER JOIN  sys.sysprocesses p2 ON p1.spid = p2.blocked AND p1.ecid = p2.ecid 
+	CROSS APPLY sys.dm_exec_sql_text(p1.sql_handle) st
+	WHERE p1.blocked = 0 
+	ORDER BY p1.spid, p1.ecid
+-- List Down all the blocked processes
+    SELECT p2.spid AS 'Blocked SPID'
+         , p2.blocked AS 'Blocking/Root Blocker SPID'
+         , p2.[loginame] AS [BlockedSPID_Login]
+         ,  st.text AS [SQL Query Text]
+         , p2.[CPU]
+         , p2.[Physical_IO]
+         , DB_NAME(p2.[dbid]) AS DBName
+         , p2.[Program_name]
+         , p2.[HostName]
+         , p2.[Status]
+         , p2.[CMD]
+         , p2.ECID AS [ExecutionContextID]
+    FROM sys.sysprocesses p1 
+	INNER JOIN sys.sysprocesses p2 ON p1.spid = p2.blocked AND p1.ecid = p2.ecid
+	CROSS APPLY sys.dm_exec_sql_text(p1.sql_handle) st
+GO
+----------------------------------execution details
+
+select percent_complete,* from sys.dm_exec_requests where command like '%dbcc%'
+
+---------table sizes query
+SELECT
+
+a3.name +'.'+a2.name AS [TableName],
+a1.rows as [# Records],
+(a1.reserved + ISNULL(a4.reserved,0))* 8 AS [Reserved KB],
+a1.data * 8 AS [Data KB],
+(CASE WHEN (a1.used + ISNULL(a4.used,0)) > a1.data THEN (a1.used + ISNULL(a4.used,0)) - a1.data ELSE 0 END) * 8 AS [Indexes KB],
+(CASE WHEN (a1.reserved + ISNULL(a4.reserved,0)) > a1.used THEN (a1.reserved + ISNULL(a4.reserved,0)) - a1.used ELSE 0 END) * 8 AS [Unused KB],
+convert(decimal(18,2),(((a1.reserved + ISNULL(a4.reserved,0))* 8) - ((CASE WHEN (a1.reserved + ISNULL(a4.reserved,0)) > a1.used THEN (a1.reserved + ISNULL(a4.reserved,0)) - a1.used ELSE 0 END) * 8))/1024.0/1024.0) as [Table_used_Space GB]
+FROM
+(SELECT
+ps.object_id,
+SUM (
+CASE
+WHEN (ps.index_id < 2) THEN row_count
+ELSE 0
+END
+) AS [rows],
+SUM (ps.reserved_page_count) AS reserved,
+SUM (
+CASE
+WHEN (ps.index_id < 2) THEN (ps.in_row_data_page_count + ps.lob_used_page_count + ps.row_overflow_used_page_count)
+ELSE (ps.lob_used_page_count + ps.row_overflow_used_page_count)
+END
+) AS data,
+SUM (ps.used_page_count) AS used
+FROM sys.dm_db_partition_stats ps
+GROUP BY ps.object_id) AS a1
+LEFT OUTER JOIN
+(SELECT
+it.parent_id,
+SUM(ps.reserved_page_count) AS reserved,
+SUM(ps.used_page_count) AS used
+FROM sys.dm_db_partition_stats ps
+INNER JOIN sys.internal_tables it ON (it.object_id = ps.object_id)
+WHERE it.internal_type IN (202,204)
+GROUP BY it.parent_id) AS a4 ON (a4.parent_id = a1.object_id)
+INNER JOIN sys.all_objects a2 ON ( a1.object_id = a2.object_id )
+INNER JOIN sys.schemas a3 ON (a2.schema_id = a3.schema_id)
+WHERE a2.type != N'S' and a2.type != N'IT' AND a2.name IN ('centralrepository_associate')
+--ORDER BY a3.name, a2.name
+--order by a1.rows desc
+order by [Table_used_Space GB] desc
+
+
+--------------------------------------CPU Utilization
+DECLARE @ts_now bigint
+SELECT @ts_now = cpu_ticks / (cpu_ticks/ms_ticks)  FROM sys.dm_os_sys_info
+SELECT top 2000 record_id, EventTime, 
+  CASE WHEN system_cpu_utilization_post_sp2 IS NOT NULL THEN system_cpu_utilization_post_sp2 ELSE system_cpu_utilization_pre_sp2 END AS system_cpu_utilization, 
+  CASE WHEN sql_cpu_utilization_post_sp2 IS NOT NULL THEN sql_cpu_utilization_post_sp2 ELSE sql_cpu_utilization_pre_sp2 END AS sql_cpu_utilization
+FROM 
+(
+  SELECT 
+    record.value('(Record/@id)[1]', 'int') AS record_id,
+    DATEADD (ms, -1 * (@ts_now - [timestamp]), GETDATE()) AS EventTime,
+    100-record.value('(Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS system_cpu_utilization_post_sp2,
+    record.value('(Record/SchedulerMonitorEvent/SystemHealth/ProcessUtilization)[1]', 'int') AS sql_cpu_utilization_post_sp2 , 
+    100-record.value('(Record/SchedluerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS system_cpu_utilization_pre_sp2,
+    record.value('(Record/SchedluerMonitorEvent/SystemHealth/ProcessUtilization)[1]', 'int') AS sql_cpu_utilization_pre_sp2
+  FROM (
+    SELECT timestamp, CONVERT (xml, record) AS record 
+    FROM sys.dm_os_ring_buffers 
+    WHERE ring_buffer_type = 'RING_BUFFER_SCHEDULER_MONITOR'
+      AND record LIKE '%<SystemHealth>%') AS t
+) AS t
+ORDER BY record_id desc
+-----------------------------------------memory usage
+declare   @cpuUsage float 
+declare   @memoryUsage float 
+BEGIN
+SET NOCOUNT ON;
+SELECT TOP 1
+        @cpuUsage = 100 - r.SystemIdle
+    FROM (
+        SELECT
+            rx.record.value('(./Record/@id)[1]', 'int') AS record_id,
+            rx.record.value('(./Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS SystemIdle
+        FROM (
+            SELECT CONVERT(XML, record) AS record
+            FROM sys.dm_os_ring_buffers
+            WHERE
+                ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' AND
+                record LIKE '%<SystemHealth>%') AS rx
+        ) AS r
+    ORDER BY r.record_id DESC
+ 
+SELECT
+        @memoryUsage =
+            (((m.total_physical_memory_kb - m.available_physical_memory_kb) /
+              convert(float, m.total_physical_memory_kb)) *
+             100)
+    FROM sys.dm_os_sys_memory m
+END
+select @cpuUsage as 'CPU',@memoryUsage as 'Memory', getdate() as CurrentTime
+-------------------------------------------------------------
+-------------------------CRS View Access script
+SELECT	CASE WHEN perm.state <> 'W' THEN perm.state_desc ELSE 'GRANT' END
+	+ SPACE(1) + perm.permission_name + SPACE(1) + 'ON ' + QUOTENAME(USER_NAME(obj.schema_id)) + '.' + QUOTENAME(obj.name) 
+	+ CASE WHEN cl.column_id IS NULL THEN SPACE(0) ELSE '(' + QUOTENAME(cl.name) + ')' END
+	+ SPACE(1) + 'TO' + SPACE(1) + QUOTENAME(USER_NAME(usr.principal_id)) COLLATE database_default
+	+ CASE WHEN perm.state <> 'W' THEN SPACE(0) ELSE SPACE(1) + 'WITH GRANT OPTION' END AS '--Object Level Permissions'
+FROM	sys.database_permissions AS perm
+	INNER JOIN
+	sys.objects AS obj
+	ON perm.major_id = obj.[object_id]
+	INNER JOIN
+	sys.database_principals AS usr
+	ON perm.grantee_principal_id = usr.principal_id
+	LEFT JOIN
+	sys.columns AS cl
+	ON cl.column_id = perm.minor_id AND cl.[object_id] = perm.major_id
+	where USER_NAME(usr.principal_id) LIKE 'oneC%'
+	
+ORDER BY perm.permission_name ASC, perm.state_desc ASC
+-------------------(OR)--------------
+SELECT	obj.name,CASE WHEN perm.state <> 'W' THEN perm.state_desc ELSE 'GRANT' END
+	+ SPACE(1) + perm.permission_name + SPACE(1) + 'ON ' + QUOTENAME(USER_NAME(obj.schema_id)) + '.' + QUOTENAME(obj.name) 
+	+ CASE WHEN cl.column_id IS NULL THEN SPACE(0) ELSE '(' + QUOTENAME(cl.name) + ')' END
+	+ SPACE(1) + 'TO' + SPACE(1) + QUOTENAME(USER_NAME(usr.principal_id)) COLLATE database_default
+	+ CASE WHEN perm.state <> 'W' THEN SPACE(0) ELSE SPACE(1) + 'WITH GRANT OPTION' END AS '--Object Level Permissions'
+FROM	sys.database_permissions AS perm
+	INNER JOIN
+	sys.objects AS obj
+	ON perm.major_id = obj.[object_id]
+	INNER JOIN
+	sys.database_principals AS usr
+	ON perm.grantee_principal_id = usr.principal_id
+	LEFT JOIN
+	sys.columns AS cl
+	ON cl.column_id = perm.minor_id AND cl.[object_id] = perm.major_id
+	where obj.name='vw_CentralRepository_Associate_Details'
+	--USER_NAME(usr.principal_id) LIKE 'oneC%'
+	ORDER BY perm.permission_name ASC, perm.state_desc ASC
+
+
+
+-----------------------------------port
+SELECT DISTINCT 
+    local_tcp_port,*
+FROM sys.dm_exec_connections 
+WHERE local_tcp_port IS NOT NULL
+-----------------ip address
+SELECT SERVERPROPERTY('ComputerNamePhysicalNetBIOS') [Machine Name]
+   ,SERVERPROPERTY('InstanceName') AS [Instance Name]
+   ,LOCAL_NET_ADDRESS AS [IP Address Of SQL Server]
+   ,CLIENT_NET_ADDRESS AS [IP Address Of Client]
+ FROM SYS.DM_EXEC_CONNECTIONS 
+ WHERE SESSION_ID = @@SPID
+
+-----------------check the secondary readonly replica
+connect the sql server with ApplicationIntent=ReadOnly
+then run below query
+SELECT DATABASEPROPERTYEX('CentralRepository', 'Updateability');
+
+
+--------------------------------find the log file status
+
+select name, log_reuse_wait_desc from sys.databases
+
+----------distribution trnsaction details
+
+select top 1000 * from distribution.Msdistribution_history  order by time desc
+select * from distribution.Msdistribution_agents
+
+select * from distribution.MSlogreader_history where agent_id=11 order by time desc
+select * from distribution.MSlogreader_agents
+
+sp_msbrowsereplcmds ;0d8sssd*hh','000nhugkff'----need to put xact_seqno,same number in both places
+
+-------------------------------
+use distribution
+go
+exec sp_browsereplcmds '0x00DA1F8B0002E6E0000100000000', '0x00DA1F8B0002E6E0000100000000'
+go
+
+-------------------------------find which table cuasing replication lag(huge transaction running)
+
+;With HugeCommands as (
+ SELECT article_id,count(1) [Counts]
+  FROM [distribution].[dbo].[MSrepl_commands] with (nolock) 
+  group by article_id --order by COunt(1) desc
+  )
+
+  select A.publication_id,P.publication,A.article_id,A.source_object,H.Counts from
+  [distribution].[dbo].[MSarticles] a  with (nolock) 
+ Left Join
+   HugeCommands H on A.article_id=H.article_id
+   Left Join
+   [distribution].[dbo].MSpublications P With(nolock)
+   on A.publication_id=P.publication_id
+   order by H.Counts desc
+==============find the table with xactseqno
+SELECT * 
+   FROM distribution.dbo.MSarticles
+   WHERE article_id in (
+      SELECT article_id 
+         FROM MSrepl_commands
+         WHERE xact_seqno = 0x xact_seqno)
+
+===================below is also we can use to find the which tables causing latency in replication
+a) SELECT article_id,count(1)
+  FROM [distribution].[dbo].[MSrepl_commands] with (nolock) group by article_id order by count(1) desc
+
+b) SELECT publication_id,article_id,source_object from
+
+  [distribution].[dbo].[MSarticles] a  where a.article_id in (88,793,792,87) ---article id get from first query
+
+------------find the table name by the xact_seqno
+select  * from MSrepl_transactions (NOLOCK) t
+join MSrepl_commands (NOLOCK) c
+on t.publisher_database_id=c.publisher_database_id
+and t.xact_seqno= c.xact_seqno
+join MSarticles a
+on a.article_id=c.article_id
+join MSpublications pub
+on a.publication_id = pub.publication_id
+where t.xact_seqno = 0x00C0198E000D5E1800B9000000000000
+--and pub.publication =< publication name>
+order by t.xact_seqno asc
+-------------
+select * from MSlogreader_history order by time desc --if stats state=1 then read and write thread is fine, if stats state=2 then there is lag in read or write thread(from publisher to distributor)
+select * from MSdistribution_history  order by time desc--if stats state=1 then read and write thread is fine, if stats state=2 then there is lag in read or write thread(from distributor to subscriber)
+
+---------ms tean given on 5Oct2024 for find out which table by lsn number
+SELECT
+    [AllocUnitName] as [ObjectName],
+    [Page ID],
+    [Current LSN],
+    [Operation],
+    [Context],
+    [Transaction ID],
+    [Description]
+FROM
+fn_dblog ('0x00e17c3b:000a5e08:000c', '0x00e17c3b:000a5e08:000c')
+
+select top 1 * from fn_dblog (null, null) 
+ 
+
+--------------replication articles find
+SELECT 
+  msp.publication AS PublicationName,
+  msa.publisher_db AS DatabaseName,
+  msa.article AS ArticleName,
+  msa.source_owner AS SchemaName,
+  msa.source_object AS TableName
+FROM distribution.dbo.MSarticles msa
+JOIN distribution.dbo.MSpublications msp ON msa.publication_id = msp.publication_id
+where msa.article='Centralrepository'
+ORDER BY 
+  msp.publication, 
+  msa.article 
+
+                    (OR)
+
+SELECT
+pub.name AS [Publication],art.name as [Article],serv.name as [Subsriber],
+sub.dest_db as [DestinationDB] FROM dbo.syssubscriptions sub
+INNER JOIN sys.servers serv ON serv.server_id = sub.srvid
+INNER JOIN dbo.sysarticles art
+ON art.artid = sub.artid
+INNER JOIN dbo.syspublications pub
+ON pub.pubid = art.pubid where art.name='Centralrepository'
+
+-------------------
+SELECT *
+  FROM [distribution].[dbo].[MSpublications]
+
+------------------Replication troubleshooting important blog
+https://www.mssqltips.com/sqlservertip/3598/troubleshooting-transactional-replication-latency-issues-in-sql-server/
+
+-------------------------find the trigger details
+SELECT TBL.name                   AS TableName,
+       Schema_name(TBL.schema_id) AS Table_SchemaName,
+       TRG.name                   AS TriggerName,
+       TRG.parent_class_desc,
+       CASE
+         WHEN TRG.is_disabled = 0 THEN 'Enable'
+         ELSE 'Disable'
+       END                        AS TRG_Status
+ 
+FROM   sys.triggers TRG
+       INNER JOIN sys.tables TBL
+               ON TBL.OBJECT_ID = TRG.parent_id
+
+-------------jobs
+
+SELECT 
+   name AS JobName,
+   enabled 
+FROM   dbo.sysjobs Job
+WHERE name in (
+'DE_QOS_ACTUALPENDINGPORTING'
+,'DE_QOS_DailyMonitoring')
+---------------job SSIS jobs names
+SELECT 
+   Srv.srvname AS ServerName,
+   Job.name AS JobName,
+   JStep.step_id,
+   JStep.step_name AS StepName,
+   JStep.command,
+   Job.enabled 
+FROM   dbo.sysjobs Job
+JOIN   dbo.sysjobsteps JStep
+   ON  JStep.job_id = Job.job_id 
+JOIN   MASTER.dbo.sysservers Srv
+   ON  Srv.srvid = Job.originating_server_id
+WHERE  JStep.subsystem='SSIS'
+ORDER BY Job.name,step_id
+
+------------database principals like 123-App-P,123-MSI-P
+select name FROM sys.database_principals WHERE [type] IN ('U', 'S', 'G','W','X','E') 
+select name FROM sys.database_principals WHERE [type] IN ('X','E') 
+E---[123-MSI-NP]
+X---[123-App-NP]
+
+------------find the db_datareader or database level read access for users
+SELECT r.name role_principal_name, 
+       m.name AS member_principal_name
+  FROM sys.database_role_members rm 
+  JOIN sys.database_principals r 
+       ON rm.role_principal_id = r.principal_id
+  JOIN sys.database_principals m 
+       ON rm.member_principal_id = m.principal_id
+ WHERE r.name='db_datareader'
+
+-------------permissions
+select  princ.name
+,       princ.type_desc
+,       perm.permission_name
+,       perm.state_desc
+,       perm.class_desc
+,       object_name(perm.major_id)
+from    sys.database_principals princ
+left join
+        sys.database_permissions perm
+on      perm.grantee_principal_id = princ.principal_id
+where    princ.name='Onec_1738'
+
+----------find unmask user names in database
+select 
+    Username           = pri.name
+   ,[User Type]        = pri.type_desc
+   ,Permission         = permit.permission_name
+   ,[Permission State] = permit.state_desc
+   ,Class              = permit.class_desc
+FROM
+    sys.database_principals  pri
+    LEFT JOIN
+    sys.database_permissions permit ON
+        permit.grantee_principal_id = pri.principal_id
+WHERE permit.permission_name = 'UNMASK'
+
+--------------backup details
+select a.backup_set_id, a.server_name, a.database_name, a.name, a.user_name, a.position, a.software_major_version, a.backup_start_date, backup_finish_date, a.backup_size, a.recovery_model, b.physical_device_name
+from msdb.dbo.backupset a join msdb.dbo.backupmediafamily b
+on a.media_set_id = b.media_set_id
+where a.database_name = 'OneC_2079'  --- here you mention the db name for which you need to check
+order by a.backup_finish_date desc
+
+-----------------Server space size in MI
+SELECT TOP 1 reserved_storage_mb/1024 as reserved_storage_GB, storage_space_used_mb/1024 as storage_space_used_GB , CAST( (storage_space_used_mb * 100. / reserved_storage_mb) as DECIMAL(9,2)) as [ReservedStoragePercentage]
+       FROM master.sys.server_resource_stats
+       ORDER BY end_time DESC;
+
+
+----------------trustworthy
+select name,is_trustworthy_on from sys.databases where name = 'OneC_839'
+
+ALTER DATABASE [OneC_1738] SET TRUSTWORTHY ON
+           or
+----for all databases trustworthy enabled
+DECLARE @command varchar(1000)
+
+SELECT @command = 'IF ''?'' NOT IN(''master'', ''model'', ''msdb'', ''tempdb'') 
+
+BEGIN 
+
+USE ? 
+
+EXEC(''ALTER DATABASE ? set TRUSTWORTHY ON '') 
+
+END '
+
+EXEC sp_MSforeachdb @command
+
+-----------------------
+--------collation setting of table
+
+SELECT COLUMN_NAME, COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'ProductGuid'
+-------collation setting of database
+SELECT name, collation_name FROM sys.databases WHERE name = 'Products';
+-------collation setting of server
+SELECT CONVERT (varchar, SERVERPROPERTY('collation')) AS 'Server Collation'
+-------change collation setting of table
+ALTER TABLE ProductGuid ALTER COLUMN guidd nvarchar(200) COLLATE Modern_Spanish_CI_AI_WS
+---------change the collaton setting of database
+-- make sure no one else is using database
+ALTER DATABASE Products SET SINGLE_USER WITH ROLLBACK IMMEDIATE
+
+-- change collation to Modern_Spanish_CI_AI_WS
+ALTER DATABASE Products COLLATE Modern_Spanish_CI_AI_WS;
+
+-- allow users back into the database
+ALTER DATABASE Products SET MULTI_USER
+--------------change the collation setting in server level
+https://www.mssqltips.com/sqlservertip/3519/changing-sql-server-collation-after-installation/
+
+-----------------connection pool / total no of connection for DB sleeping connetions
+SELECT 
+    DB_NAME(dbid) as DBName, 
+    COUNT(dbid) as NumberOfConnections,
+    loginame as LoginName
+FROM
+    sys.sysprocesses
+WHERE 
+    dbid > 0 
+	--and DB_NAME(dbid)='OneC_VMS'
+GROUP BY 
+    dbid, loginame
+
+-------------PRAMIRY KEY NAME for tables
+SELECT 
+  TABLE_NAME, 
+  COLUMN_NAME,
+  CONSTRAINT_NAME
+FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE
+WHERE TABLE_NAME='CentralRepository_ESA_Allocation_MIG'
+    
+---------------connection pool / total no of connection for DB sleeping connetions
+
+
+SELECT   s.host_name,c.client_net_address, s.host_process_id, s.program_name, COUNT(*) AS [NoOfConnections]
+FROM sys.dm_exec_connections AS c JOIN sys.dm_exec_sessions AS s ON c.session_id = s.session_id
+GROUP BY HOST_NAME, c.client_net_address, s.host_process_id, PROGRAM_NAME
+ORDER BY COUNT(*) DESC
+
+-------------find the database last used date
+SELECT name as [Database Name], [Last Access Date] =(select MAX(temp.lastaccess)
+from ( select lastaccess =
+max(last_user_seek)
+where max(last_user_seek)is not null
+union all
+select lastaccess = max(last_user_scan)
+where max(last_user_scan)is not null
+union all
+select lastaccess = max(last_user_lookup)
+where max(last_user_lookup) is not null
+union all
+select lastaccess =max(last_user_update)
+where max(last_user_update) is not null) temp)
+FROM master.dbo.sysdatabases sysdb
+left outer join sys.dm_db_index_usage_stats Idxus
+on sysdb.dbid= Idxus.database_id
+group by sysdb.name
+--------------find the last accessed time of tables in database
+EXEC sp_MSforeachdb '
+USE [?];
+IF DB_ID(''?'') =20 -- exclude system databases
+BEGIN
+    SELECT 
+        DB_NAME(database_id) AS DatabaseName,
+        OBJECT_NAME(object_id, database_id) AS TableName,
+        last_user_update AS LastAccessed
+    FROM sys.dm_db_index_usage_stats
+    WHERE database_id = DB_ID(''?'')
+    AND OBJECT_NAME(object_id, database_id) LIKE ''%CentralRepository%''
+    ORDER BY last_user_update DESC;
+END';
+
+------find tables for views
+select distinct schema_name(v.schema_id) as schema_name,
+       v.name as view_name,
+       schema_name(o.schema_id) as referenced_schema_name,
+       o.name as referenced_entity_name,
+       o.type_desc as entity_type
+from sys.views v
+join sys.sql_expression_dependencies d
+     on d.referencing_id = v.object_id
+     and d.referenced_id is not null
+join sys.objects o
+     on o.object_id = d.referenced_id
+ order by schema_name,
+          view_name;
+
+
+
+          (OR)
+
+SELECT a.view_name, a.Table_Name as Level_1, 
+b.TABLE_NAME as Level_2, 
+c.TABLE_NAME as Level_3, 
+d.TABLE_NAME as Level_4, 
+e.TABLE_NAME as Level_5, 
+f.TABLE_NAME as Level_6,
+case when f.TABLE_NAME is not null then f.TABLE_NAME
+ 
+when e.TABLE_NAME is not null then e.TABLE_NAME
+ 
+when d.TABLE_NAME is not null then d.TABLE_NAME
+ 
+when c.TABLE_NAME is not null then c.TABLE_NAME
+ 
+when b.TABLE_NAME is not null then b.TABLE_NAME
+ 
+when a.TABLE_NAME is not null then a.TABLE_NAME
+ 
+end as TheTable
+ 
+, case when f.TABLE_NAME is not null then 6
+ 
+when e.TABLE_NAME is not null then 5
+ 
+when d.TABLE_NAME is not null then 4
+ 
+when c.TABLE_NAME is not null then 3
+ 
+when b.TABLE_NAME is not null then 2
+ 
+when a.TABLE_NAME is not null then 1
+ 
+end as Depth
+ 
+ 
+FROM INFORMATION_SCHEMA.VIEW_TABLE_USAGE a
+ 
+left join INFORMATION_SCHEMA.VIEW_TABLE_USAGE b on a.TABLE_NAME = b.VIEW_NAME
+ 
+left join INFORMATION_SCHEMA.VIEW_TABLE_USAGE c on b.TABLE_NAME = c.VIEW_NAME
+ 
+left join INFORMATION_SCHEMA.VIEW_TABLE_USAGE d on c.TABLE_NAME = d.VIEW_NAME
+ 
+left join INFORMATION_SCHEMA.VIEW_TABLE_USAGE e on d.TABLE_NAME = e.VIEW_NAME
+ 
+left join INFORMATION_SCHEMA.VIEW_TABLE_USAGE f on e.TABLE_NAME = f.VIEW_NAME
+ 
+ 
+ 
+ORDER BY a.view_name, a.table_name, b.TABLE_NAME, c.TABLE_NAME, d.TABLE_NAME, e.TABLE_NAME, f.TABLE_NAME
+ 
+GO
+-------------view definition find
+
+select o.name,definition
+from sys.objects     o
+join sys.sql_modules m on m.object_id = o.object_id
+where o.type='V' and o.name in ( 'vw_CentralRepository_Action')
+
+----------------- to list orphaned users
+EXEC sp_change_users_login 'Report'
+ 
+-- to fix a specific user (replace <user> with the user name)
+EXEC sp_change_users_login 'Auto_Fix', [<user>]
+
+-- to fix a user and create new login and password
+EXEC sp_change_users_login 'Auto_Fix', [<user>], NULL, '<password>'
+
+
+----------------------immediate sync and allow anonymous set false
+-----------find the status of  allow_anonymous and immediate_sync -----run in publication database
+sp_helppublication
+----------------------- set allow_anonymous and immediate_sync as false
+
+sp_changepublication @publication = 'BIDB',
+@property = 'allow_anonymous',
+@value = 'false'
+GO
+
+EXEC sp_changepublication @publication = 'BIDB',
+@property = 'immediate_sync',
+@value = 'false'
+GO
+
+======================================
+-----------replication inactive subscriber resolve
+STEP 1: select * From distribution..MSsubscriptions
+P.S:  Note down publisher_id, publisher db name, publication_id , subscriber_id and subscriber_db name of whose status is 0
+Status of the subscription: 0 = Inactive; 1 = Subscribed; 2 = Active
+subscription_type 0=PUSH, 1=PULL
+
+STEP 2:  Update Status to 2
+if exists (select 1 from distribution..MSsubscriptions where status = 0)
+begin
+UPDATE distribution..MSsubscriptions
+SET STATUS = 2
+WHERE publisher_id = '--publisher_id -- will be integer --'
+    AND publisher_db = '--publisher db name ---'
+    AND publication_id = '--publication_id -- will be integer --'
+    AND subscriber_id = '--subscriber_id -- will be integer ---'
+    AND subscriber_db = '-- subscriber_db ---'
+end
+else
+begin
+print 'The subscription is not INACTIVE.. you are good for now .... !!'
+end
+
+STEP 3: Right click on subscriber and choose view synchronizing status
+
+-----------------MI servers Storage details/ space
+
+SELECT TOP 1 reserved_storage_mb/1024 as reserved_storage_GB, storage_space_used_mb/1024 as storage_space_usage_GB , CAST( (storage_space_used_mb * 100. / reserved_storage_mb) as DECIMAL(9,2)) as [ReservedStoragePercentage]
+FROM master.sys.server_resource_stats
+ORDER BY end_time DESC;
+
+
+-------------fragmentation--------------------------------------
+
+ 
+
+              SELECT  DISTINCT
+              s.name+'.'+ OBJECT_NAME(ind.OBJECT_ID) AS TableName, 
+              ind.name AS IndexName, indexstats.index_type_desc AS IndexType,page_count, 
+              indexstats.avg_fragmentation_in_percent 
+              ,'ALTER INDEX  [' + ind.name + N'] ON ' +  s.name + N'.[' + OBJECT_NAME(ind.OBJECT_ID) + N'] REBUILD' AS RebuildScript
+FROM 
+              sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, NULL) indexstats 
+              INNER JOIN sys.indexes ind  ON ind.object_id = indexstats.object_id 
+              AND ind.index_id = indexstats.index_id 
+                       INNER JOIN sys.tables t ON ind.object_id = t.object_id
+                           INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE 
+              indexstats.avg_fragmentation_in_percent > =20 
+              AND page_Count>200
+ORDER BY 
+             page_count desc, indexstats.avg_fragmentation_in_percent DESC
+
+
+
+
+--sp_updatestats
+
+ 
+
+------Outdated Statistics----------------------
+
+ 
+
+SELECT   distinct st.object_id    AS [Table ID], OBJECT_NAME(st.object_id)   AS [Table Name], 
+st.name   AS [Index Name], STATS_DATE(st.object_id, st.stats_id) AS [LastUpdated], modification_counter   AS [Rows Modified]
+,'UPDATE STATISTICS ['+  s.name +'].['+ OBJECT_NAME(st.object_id)+'] ['+st.name  +']  WITH fullscan ;' as updatescript
+FROM  sys.stats st CROSS APPLY   sys.dm_db_stats_properties(st.object_id, st.stats_id) AS sp
+INNER JOIN sys.tables t ON st.object_id = t.object_id
+INNER JOIN sys.schemas s ON s.schema_id = t.schema_id
+WHERE STATS_DATE(st.object_id, st.stats_id)<=DATEADD(DAY,-1,GETDATE())  
+AND modification_counter > 0 AND OBJECTPROPERTY(st.object_id,'IsUserTable')=1
+GO  
+
+
+------------------To check Index % completion 
+DECLARE @SPID INT = 971;--give the SPID correpsonding to the session to check
+ 
+;WITH agg AS
+(
+     SELECT SUM(qp.[row_count]) AS [RowsProcessed],
+            SUM(qp.[estimate_row_count]) AS [TotalRows],
+            MAX(qp.last_active_time) - MIN(qp.first_active_time) AS [ElapsedMS],
+            MAX(IIF(qp.[close_time] = 0 AND qp.[first_row_time] > 0,
+                    [physical_operator_name],
+                    N'<Transition>')) AS [CurrentStep]
+     FROM sys.dm_exec_query_profiles qp
+     WHERE qp.[physical_operator_name] IN (N'Table Scan', N'Clustered Index Scan',
+                                           N'Index Scan',  N'Sort')
+     AND   qp.[session_id] = @SPID
+), comp AS
+(
+     SELECT *,
+            ([TotalRows] - [RowsProcessed]) AS [RowsLeft],
+            ([ElapsedMS] / 1000.0) AS [ElapsedSeconds]
+     FROM   agg
+)
+SELECT [CurrentStep],
+       [TotalRows],
+       [RowsProcessed],
+       [RowsLeft],
+       CONVERT(DECIMAL(5, 2),
+               (([RowsProcessed] * 1.0) / [TotalRows]) * 100) AS [PercentComplete],
+       [ElapsedSeconds],
+       (([ElapsedSeconds] / [RowsProcessed]) * [RowsLeft]) AS [EstimatedSecondsLeft],
+       DATEADD(SECOND,
+               (([ElapsedSeconds] / [RowsProcessed]) * [RowsLeft]),
+               GETDATE()) AS [EstimatedCompletionTime]
+FROM   comp;
+
+===============================
+-----------------existed index create script
+SELECT T.name ,' CREATE ' +
+       CASE 
+            WHEN I.is_unique = 1 THEN ' UNIQUE '
+            ELSE ''
+       END +
+       I.type_desc COLLATE DATABASE_DEFAULT + ' INDEX ' +
+       I.name + ' ON ' +
+       SCHEMA_NAME(T.schema_id) + '.' + T.name + ' ( ' +
+       KeyColumns + ' )  ' +
+       ISNULL(' INCLUDE (' + IncludedColumns + ' ) ', '') +
+       ISNULL(' WHERE  ' + I.filter_definition, '') + ' WITH ( ' +
+       CASE 
+            WHEN I.is_padded = 1 THEN ' PAD_INDEX = ON '
+            ELSE ' PAD_INDEX = OFF '
+       END + ',' +
+       'FILLFACTOR = ' + CONVERT(
+           CHAR(5),
+           CASE 
+                WHEN I.fill_factor = 0 THEN 100
+                ELSE I.fill_factor
+           END
+       ) + ',' +
+       -- default value 
+       'SORT_IN_TEMPDB = OFF ' + ',' +
+       CASE 
+            WHEN I.ignore_dup_key = 1 THEN ' IGNORE_DUP_KEY = ON '
+            ELSE ' IGNORE_DUP_KEY = OFF '
+       END + ',' +
+       CASE 
+            WHEN ST.no_recompute = 0 THEN ' STATISTICS_NORECOMPUTE = OFF '
+            ELSE ' STATISTICS_NORECOMPUTE = ON '
+       END + ',' +
+       ' ONLINE = OFF ' + ',' +
+       CASE 
+            WHEN I.allow_row_locks = 1 THEN ' ALLOW_ROW_LOCKS = ON '
+            ELSE ' ALLOW_ROW_LOCKS = OFF '
+       END + ',' +
+       CASE 
+            WHEN I.allow_page_locks = 1 THEN ' ALLOW_PAGE_LOCKS = ON '
+            ELSE ' ALLOW_PAGE_LOCKS = OFF '
+       END + ' ) ON [' +
+       DS.name + ' ] ' +  CHAR(13) + CHAR(10) + ' ' [CreateIndexScript]
+FROM   sys.indexes I
+       JOIN sys.tables T
+            ON  T.object_id = I.object_id
+       JOIN sys.sysindexes SI
+            ON  I.object_id = SI.id
+            AND I.index_id = SI.indid
+       JOIN (
+                SELECT *
+                FROM   (
+                           SELECT IC2.object_id,
+                                  IC2.index_id,
+                                  STUFF(
+                                      (
+                                          SELECT ' , ' + C.name + CASE 
+                                                                       WHEN MAX(CONVERT(INT, IC1.is_descending_key)) 
+                                                                            = 1 THEN 
+                                                                            ' DESC '
+                                                                       ELSE 
+                                                                            ' ASC '
+                                                                  END
+                                          FROM   sys.index_columns IC1
+                                                 JOIN sys.columns C
+                                                      ON  C.object_id = IC1.object_id
+                                                      AND C.column_id = IC1.column_id
+                                                      AND IC1.is_included_column = 
+                                                          0
+                                          WHERE  IC1.object_id = IC2.object_id
+                                                 AND IC1.index_id = IC2.index_id
+                                          GROUP BY
+                                                 IC1.object_id,
+                                                 C.name,
+                                                 index_id
+                                          ORDER BY
+                                                 MAX(IC1.key_ordinal) 
+                                                 FOR XML PATH('')
+                                      ),
+                                      1,
+                                      2,
+                                      ''
+                                  ) KeyColumns
+                           FROM   sys.index_columns IC2 
+                                  --WHERE IC2.Object_id = object_id('Person.Address') --Comment for all tables
+                           GROUP BY
+                                  IC2.object_id,
+                                  IC2.index_id
+                       ) tmp3
+            )tmp4
+            ON  I.object_id = tmp4.object_id
+            AND I.Index_id = tmp4.index_id
+       JOIN sys.stats ST
+            ON  ST.object_id = I.object_id
+            AND ST.stats_id = I.index_id
+       JOIN sys.data_spaces DS
+            ON  I.data_space_id = DS.data_space_id
+       JOIN sys.filegroups FG
+            ON  I.data_space_id = FG.data_space_id
+       LEFT JOIN (
+                SELECT *
+                FROM   (
+                           SELECT IC2.object_id,
+                                  IC2.index_id,
+                                  STUFF(
+                                      (
+                                          SELECT ' , ' + C.name
+                                          FROM   sys.index_columns IC1
+                                                 JOIN sys.columns C
+                                                      ON  C.object_id = IC1.object_id
+                                                      AND C.column_id = IC1.column_id
+                                                      AND IC1.is_included_column = 
+                                                          1
+                                          WHERE  IC1.object_id = IC2.object_id
+                                                 AND IC1.index_id = IC2.index_id
+                                          GROUP BY
+                                                 IC1.object_id,
+                                                 C.name,
+                                                 index_id 
+                                                 FOR XML PATH('')
+                                      ),
+                                      1,
+                                      2,
+                                      ''
+                                  ) IncludedColumns
+                           FROM   sys.index_columns IC2 
+                                  --WHERE IC2.Object_id = object_id('Person.Address') --Comment for all tables
+                           GROUP BY
+                                  IC2.object_id,
+                                  IC2.index_id
+                       ) tmp1
+                WHERE  IncludedColumns IS NOT NULL
+            ) tmp2
+            ON  tmp2.object_id = I.object_id
+            AND tmp2.index_id = I.index_id
+WHERE  I.is_primary_key = 0
+       --AND I.is_unique_constraint = 0
+           --AND  T.name ='CHire_RequisitionJobDescription_STG_CURR'
+		   --('CentralRepository_LMS_PersonAcquiredSkill','CentralRepository_LMS_SkillMaster')
+		   --I.Object_id = object_id('CentralRepository_LMS%') --Comment for all tables
+           --AND I.name = 'IX_Address_PostalCode' --comment for all indexes
+
+--------------TDE ecryption details for database cloud
+SELECT DB_NAME(database_id) AS DatabaseName,
+encryption_state_desc =
+CASE encryption_state
+WHEN '0' THEN 'No database encryption key present, no encryption'
+WHEN '1' THEN 'Unencrypted'
+WHEN '2' THEN 'Encryption in progress'
+WHEN '3' THEN 'Encrypted'
+WHEN '4' THEN 'Key change in progress'
+WHEN '5' THEN 'Decryption in progress'
+WHEN '6' THEN 'Protection change in progress (The certificate or asymmetric key that is encrypting the database encryption key is being changed.)'
+ELSE 'No Status'
+END,
+encryptor_type,key_algorithm,key_length,* FROM sys.dm_database_encryption_keys 
+
+-------------------Missing Index
+-- Missing Index Script
+-- Original Author: David Waller 
+-- Date: 4/2020
+
+SELECT db.[name] AS [DatabaseName]
+,OBJECT_NAME(id.[object_id], db.[database_id]) AS [ObjectName]
+    ,id.[statement] AS [FullyQualifiedObjectName]
+    ,id.[equality_columns] AS [EqualityColumns]
+    ,id.[inequality_columns] AS [InEqualityColumns]
+    ,id.[included_columns] AS [IncludedColumns]
+    ,gs.[unique_compiles] AS [UniqueCompiles]
+    ,gs.[user_seeks] AS [UserSeeks]
+    ,gs.[user_scans] AS [UserScans]
+    ,gs.[last_user_seek] AS [LastUserSeekTime]
+    ,gs.[last_user_scan] AS [LastUserScanTime]
+    ,gs.[avg_total_user_cost] AS [AvgTotalUserCost]  -- Average cost of the user queries that could be reduced by the index in the group.
+    ,gs.[avg_user_impact] AS [AvgUserImpact]  -- The value means that the query cost would on average drop by this percentage if this missing index group was implemented.
+    ,gs.[user_seeks] * gs.[avg_total_user_cost] * (gs.[avg_user_impact] * 0.01) AS [IndexAdvantage]
+    ,'CREATE INDEX [IX_' + OBJECT_NAME(id.[object_id], db.[database_id]) + '_' + REPLACE(REPLACE(REPLACE(ISNULL(id.[equality_columns], ''), ', ', '_'), '[', ''), ']', '') + CASE
+        WHEN id.[equality_columns] IS NOT NULL
+            AND id.[inequality_columns] IS NOT NULL
+            THEN '_'
+        ELSE ''
+        END + REPLACE(REPLACE(REPLACE(ISNULL(id.[inequality_columns], ''), ', ', '_'), '[', ''), ']', '') + '_' + LEFT(CAST(NEWID() AS [nvarchar](64)), 5) + ']' + ' ON ' + id.[statement] + ' (' + ISNULL(id.[equality_columns], '') + CASE
+        WHEN id.[equality_columns] IS NOT NULL
+            AND id.[inequality_columns] IS NOT NULL
+            THEN ','
+        ELSE ''
+        END + ISNULL(id.[inequality_columns], '') + ')' + ISNULL(' INCLUDE (' + id.[included_columns] + ')', '') AS [ProposedIndex]
+    ,CAST(CURRENT_TIMESTAMP AS [smalldatetime]) AS [CollectionDate]
+FROM [sys].[dm_db_missing_index_group_stats] gs WITH (NOLOCK)
+INNER JOIN [sys].[dm_db_missing_index_groups] ig WITH (NOLOCK) ON gs.[group_handle] = ig.[index_group_handle]
+INNER JOIN [sys].[dm_db_missing_index_details] id WITH (NOLOCK) ON ig.[index_handle] = id.[index_handle]
+INNER JOIN [sys].[databases] db WITH (NOLOCK) ON db.[database_id] = id.[database_id]
+WHERE  db.[database_id] = DB_ID()
+ORDER BY ObjectName, [IndexAdvantage] DESC
+OPTION (RECOMPILE);
+================Unused indexes
+
+SELECT
+    objects.name AS Table_name,
+    indexes.name AS Index_name,
+    dm_db_index_usage_stats.user_seeks,
+    dm_db_index_usage_stats.user_scans,
+    dm_db_index_usage_stats.user_updates
+FROM
+    sys.dm_db_index_usage_stats
+    INNER JOIN sys.objects ON dm_db_index_usage_stats.OBJECT_ID = objects.OBJECT_ID
+    INNER JOIN sys.indexes ON indexes.index_id = dm_db_index_usage_stats.index_id AND dm_db_index_usage_stats.OBJECT_ID = indexes.OBJECT_ID
+WHERE
+    indexes.is_primary_key = 0 -- This condition excludes primary key constarint
+    AND
+    indexes. is_unique = 0 -- This condition excludes unique key constarint
+    AND
+    dm_db_index_usage_stats. user_lookups = 0
+    AND
+    dm_db_index_usage_stats.user_seeks = 0
+    AND
+    dm_db_index_usage_stats.user_scans = 0
+ORDER BY
+    dm_db_index_usage_stats.user_updates DESC
+
+
+
+
+
+
+
+
+============================================================================================
+
+------------------Constraints
+---- Disable all  constraints in a table--
+
+--ALTER TABLE TableName NOCHECK CONSTRAINT ALL
+
+---- Enable all  constraints in a table ------
+
+--ALTER TABLE TableName CHECK CONSTRAINT ALL
+
+---- Disable all constraints for database
+
+--EXEC sp_msforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT all';
+
+---- Enable all constraints for database
+
+--EXEC sp_msforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all';
+
+
+/*To check constraint status*/
+
+SELECT	OBJECT_NAME(RKEYID) AS REFERENCED_TABLE_NAME,
+
+		OBJECT_NAME(FKEYID) AS CHILD_TABLE_NAME,
+
+        OBJECT_NAME(CONSTID) AS CONSTRAINT_NAME,
+
+        COL_NAME(FKEYID, FKEY) AS COLUMN_NAME,
+
+        COL_NAME(RKEYID, RKEY) AS REFERENCED_COLUMN_NAME,
+
+		(CASE 
+
+        WHEN OBJECTPROPERTY(CONSTID, 'CNSTISDISABLED') = 0 THEN 'ENABLED'
+
+        ELSE 'DISABLED'
+
+        END) AS STATUS
+
+   FROM SYSFOREIGNKEYS
+
+ORDER BY CHILD_TABLE_NAME, CONSTRAINT_NAME,REFERENCED_TABLE_NAME, KEYNO;
+
+====================DR Drill pre checks script by vivek janakiraman
+[4:28 PM] Vivek Janakiraman
+if convert(varchar(20),SERVERPROPERTY('productversion')) like '8%'
+SELECT [name], fileid, filename, [size]/128.0 AS 'Total Size in MB',
+[size]/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS 'Available Space In MB',
+CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS 'Used Space In MB',
+(100-((([size]/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0)/([size]/128.0))*100.0)) AS 'percentage Used'
+FROM sysfiles
+else
+SELECT @@servername as 'ServerName',db_name() as DBName,[name], file_id, physical_name, [size]/128 AS
+'Total Size in MB',
+[size]/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS 'Available Space In MB',
+CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS 'Used Space In MB',
+(100-((([size]/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0)/([size]/128.0))*100.0)) AS 'percentage Used'
+FROM sys.database_files
+go
+
+----------------------------------Query to get the login status
+select sp.name as login,
+       sp.type_desc as login_type,
+       sl.password_hash,
+       sp.create_date,
+       sp.modify_date,
+       case when sp.is_disabled = 1 then 'Disabled'
+            else 'Enabled' end as status
+from sys.server_principals sp
+left join sys.sql_logins sl
+          on sp.principal_id = sl.principal_id
+--where sp.type not in ('G', 'R')
+order by sp.name;
+
+-----------------------------index creation % check 
+DECLARE @SPID INT = 624;--give the SPID correpsonding to the session to check
+ 
+;WITH agg AS
+(
+     SELECT SUM(qp.[row_count]) AS [RowsProcessed],
+            SUM(qp.[estimate_row_count]) AS [TotalRows],
+            MAX(qp.last_active_time) - MIN(qp.first_active_time) AS [ElapsedMS],
+            MAX(IIF(qp.[close_time] = 0 AND qp.[first_row_time] > 0,
+                    [physical_operator_name],
+                    N'<Transition>')) AS [CurrentStep]
+     FROM sys.dm_exec_query_profiles qp
+     WHERE qp.[physical_operator_name] IN (N'Table Scan', N'Clustered Index Scan',
+                                           N'Index Scan',  N'Sort')
+     AND   qp.[session_id] = @SPID
+), comp AS
+(
+     SELECT *,
+            ([TotalRows] - [RowsProcessed]) AS [RowsLeft],
+            ([ElapsedMS] / 1000.0) AS [ElapsedSeconds]
+     FROM   agg
+)
+SELECT [CurrentStep],
+       [TotalRows],
+       [RowsProcessed],
+       [RowsLeft],
+       CONVERT(DECIMAL(5, 2),
+               (([RowsProcessed] * 1.0) / [TotalRows]) * 100) AS [PercentComplete],
+       [ElapsedSeconds],
+       (([ElapsedSeconds] / [RowsProcessed]) * [RowsLeft]) AS [EstimatedSecondsLeft],
+       DATEADD(SECOND,
+               (([ElapsedSeconds] / [RowsProcessed]) * [RowsLeft]),
+               GETDATE()) AS [EstimatedCompletionTime]
+FROM   comp;
+
+----------------active/enabled jobs details with scheduler 
+select 
+       S.name AS JobName,
+       SS.name AS ScheduleName,                    
+       CASE(SS.freq_type)
+            WHEN 1  THEN 'Once'
+            WHEN 4  THEN 'Daily'
+            WHEN 8  THEN (case when (SS.freq_recurrence_factor > 1) then  'Every ' + convert(varchar(3),SS.freq_recurrence_factor) + ' Weeks'  else 'Weekly'  end)
+            WHEN 16 THEN (case when (SS.freq_recurrence_factor > 1) then  'Every ' + convert(varchar(3),SS.freq_recurrence_factor) + ' Months' else 'Monthly' end)
+            WHEN 32 THEN 'Every ' + convert(varchar(3),SS.freq_recurrence_factor) + ' Months' -- RELATIVE
+            WHEN 64 THEN 'SQL Startup'
+            WHEN 128 THEN 'SQL Idle'
+            ELSE '??'
+        END AS Frequency,  
+       CASE
+            WHEN (freq_type = 1)                       then 'One time only'
+            WHEN (freq_type = 4 and freq_interval = 1) then 'Every Day'
+            WHEN (freq_type = 4 and freq_interval > 1) then 'Every ' + convert(varchar(10),freq_interval) + ' Days'
+            WHEN (freq_type = 8) then (select 'Weekly Schedule' = MIN(D1+ D2+D3+D4+D5+D6+D7 )
+                                        from (select SS.schedule_id,
+                                                        freq_interval, 
+                                                        'D1' = CASE WHEN (freq_interval & 1  <> 0) then 'Sun ' ELSE '' END,
+                                                        'D2' = CASE WHEN (freq_interval & 2  <> 0) then 'Mon '  ELSE '' END,
+                                                        'D3' = CASE WHEN (freq_interval & 4  <> 0) then 'Tue '  ELSE '' END,
+                                                        'D4' = CASE WHEN (freq_interval & 8  <> 0) then 'Wed '  ELSE '' END,
+                                                    'D5' = CASE WHEN (freq_interval & 16 <> 0) then 'Thu '  ELSE '' END,
+                                                        'D6' = CASE WHEN (freq_interval & 32 <> 0) then 'Fri '  ELSE '' END,
+                                                        'D7' = CASE WHEN (freq_interval & 64 <> 0) then 'Sat '  ELSE '' END
+                                                    from msdb..sysschedules ss
+                                                where freq_type = 8
+                                            ) as F
+                                        where schedule_id = SJ.schedule_id 
+                                    )
+            WHEN (freq_type = 16) then 'Day ' + convert(varchar(2),freq_interval) 
+            WHEN (freq_type = 32) then (select  freq_rel + WDAY 
+                                        from (select SS.schedule_id,
+                                                        'freq_rel' = CASE(freq_relative_interval)
+                                                                    WHEN 1 then 'First'
+                                                                    WHEN 2 then 'Second'
+                                                                    WHEN 4 then 'Third'
+                                                                    WHEN 8 then 'Fourth'
+                                                                    WHEN 16 then 'Last'
+                                                                    ELSE '??'
+                                                                    END,
+                                                    'WDAY'     = CASE (freq_interval)
+                                                                    WHEN 1 then ' Sun'
+                                                                    WHEN 2 then ' Mon'
+                                                                    WHEN 3 then ' Tue'
+                                                                    WHEN 4 then ' Wed'
+                                                                    WHEN 5 then ' Thu'
+                                                                    WHEN 6 then ' Fri'
+                                                                    WHEN 7 then ' Sat'
+                                                                    WHEN 8 then ' Day'
+                                                                    WHEN 9 then ' Weekday'
+                                                                    WHEN 10 then ' Weekend'
+                                                                    ELSE '??'
+                                                                    END
+                                                from msdb..sysschedules SS
+                                                where SS.freq_type = 32
+                                                ) as WS 
+                                        where WS.schedule_id = SS.schedule_id 
+                                        ) 
+        END AS Interval,
+        CASE (freq_subday_type)
+            WHEN 1 then   left(stuff((stuff((replicate('0', 6 - len(active_start_time)))+ convert(varchar(6),active_start_time),3,0,':')),6,0,':'),8)
+            WHEN 2 then 'Every ' + convert(varchar(10),freq_subday_interval) + ' seconds'
+            WHEN 4 then 'Every ' + convert(varchar(10),freq_subday_interval) + ' minutes'
+            WHEN 8 then 'Every ' + convert(varchar(10),freq_subday_interval) + ' hours'
+            ELSE '??'
+        END AS [Time],
+        CASE SJ.next_run_date
+            WHEN 0 THEN cast('n/a' as char(10))
+            ELSE convert(char(10), convert(datetime, convert(char(8),SJ.next_run_date)),120)  + ' ' + left(stuff((stuff((replicate('0', 6 - len(next_run_time)))+ convert(varchar(6),next_run_time),3,0,':')),6,0,':'),8)
+        END AS NextRunTime
+from msdb.dbo.sysjobs S
+left join msdb.dbo.sysjobschedules SJ on S.job_id = SJ.job_id  
+left join msdb.dbo.sysschedules SS on SS.schedule_id = SJ.schedule_id where s.enabled=1
+order by S.name
+
+=====================================
+
+
+
+
+
+============================================== query details with hash value 
+SELECT Txt.query_text_id, Txt.query_sql_text, Pln.plan_id, Qry.*, RtSt.*
+FROM sys.query_store_plan AS Pln
+INNER JOIN sys.query_store_query AS Qry
+    ON Pln.query_id = Qry.query_id
+INNER JOIN sys.query_store_query_text AS Txt
+    ON Qry.query_text_id = Txt.query_text_id
+INNER JOIN sys.query_store_runtime_stats RtSt
+ON Pln.plan_id = RtSt.plan_id;
+
+
+		   (OR)
+
+DECLARE @queryhash VARBINARY(64) = 0x2D8506AE3E46D084    --TODO Replace this queryhash
+ 
+SELECT TOP 100 p.query_id, p.query_plan_hash, q.query_hash, o.[name], o.[type_desc], qt.query_sql_text, p.last_execution_time, CAST(query_plan AS XML) AS QueryPlan
+
+FROM sys.query_store_plan p
+
+	LEFT JOIN sys.query_store_query q ON q.query_id = p.query_id
+
+	LEFT JOIN sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
+
+	LEFT JOIN sys.all_objects o on o.object_id = q.object_id
+
+WHERE q.query_hash = @queryhash
+
+ORDER BY p.last_execution_time DESC
+
+=====================================performance issue troubleshoot for tables
+step:1 run the below query and it will give the update stats query so take it which tables required and run it
+
+below query would give the update stats details so we can run those directly in lean hours
+----DECLARE @queryhash VARBINARY(64) = 0x2D8506AE3E46D084  --TODO Replace this queryhash
+ 
+SELECT *, CAST(query_plan AS XML) AS QueryPlan
+    FROM sys.query_store_runtime_stats AS s 
+    JOIN sys.query_store_runtime_stats_interval AS iv
+	        ON iv.runtime_stats_interval_id = s.runtime_stats_interval_id
+	JOIN sys.query_store_plan AS p ON p.plan_id = s.plan_id
+	LEFT JOIN sys.query_store_query q ON q.query_id = p.query_id
+	LEFT JOIN sys.query_store_query_text qt ON qt.query_text_id = q.query_text_id
+	LEFT JOIN sys.all_objects o on o.object_id = q.object_id
+WHERE start_time > DATEADD(dd, -1, GETUTCDATE())
+--WHERE q.query_hash = @queryhash
+ORDER BY s.avg_cpu_time DESC
+
+Note: please select required column like avucpu or avg time read etc
+
+                (OR)
+step 1:
+-----------------------query to check the stats are completely updated or not ( we need to rows and rows_sampled should have same count, other wise we need to update by the query(UPDATE STATISTICS [dbo].[CentralRepository_esa_Allocation_mig][INDXC_CentralRepository_ESA_Allocation_MIG_START_DT_EMPLID] WITH  sample 100 percent, maxdop=16;)
+
+
+-------------below is select query to get the details
+
+DECLARE @ObjectName VARCHAR(255) = 'CentralRepository_esa_Allocation_mig'
+ 
+SELECT object_id AS [TableId], index_id AS [IndexId], 
+	OBJECT_NAME(object_id) AS [TableName], name AS [IndexName], 
+stats_date(object_id,index_id) stat_update_date, 
+	INDEXPROPERTY(object_id, name,'IsAutoStatistics') is_system_generated_stats
+FROM sys.indexes WITH (NOLOCK)
+WHERE object_id = OBJECT_ID(@ObjectName)
+ORDER BY OBJECT_NAME(object_id), index_id
+ 
+SELECT sp.stats_id, name, filter_definition, last_updated, rows, rows_sampled, steps, unfiltered_rows, modification_counter   
+FROM sys.stats AS stat   
+CROSS APPLY sys.dm_db_stats_properties(stat.object_id, stat.stats_id) AS sp  
+WHERE stat.object_id = object_id(@ObjectName);  

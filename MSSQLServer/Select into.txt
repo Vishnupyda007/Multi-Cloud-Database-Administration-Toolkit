@@ -1,0 +1,11 @@
+INSERT INTO [InsertIntoTest]
+SELECT *
+FROM [10MillionRows]
+GO
+
+
+---
+SELECT *
+INTO [dbo].[SelectIntoTest]
+FROM [10MillionRows]
+GO

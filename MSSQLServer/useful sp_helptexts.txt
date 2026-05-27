@@ -1,0 +1,13 @@
+sp_helpindex 'LMS_TBL_TMX_ACTIVITY_STG_CURR'
+ 
+sp_spaceused 'LMS_TBL_TMX_ACTIVITY_STG_CURR'
+ 
+sp_depends tblname
+ 
+sp_helptext 'SPname' or 'funcName'
+ 
+sp_helptext 'viewname'
+ 
+sp_helptext tblname or highlight the table and press alt+F1
+ 
+SP_helpstats N'tblName', 'ALL'

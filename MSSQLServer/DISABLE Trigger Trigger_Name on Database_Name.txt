@@ -1,0 +1,29 @@
+DISABLE Trigger Trigger_Name on Database_Name
+
+
+
+
+To disable a trigger on the `tDDLEventLog` table in the `DBAdmin` schema, you can use the `DISABLE TRIGGER` statement. Here's how you can do it:
+
+```sql
+USE DBAdmin;
+GO
+DISABLE TRIGGER [TriggerName] ON dbo.tDDLEventLog;
+GO
+```
+
+Replace `[TriggerName]` with the actual name of the trigger you want to disable.
+
+If you're not sure about the trigger name, you can list all triggers on the `tDDLEventLog` table using the following query:
+
+```sql
+USE DBAdmin;
+GO
+SELECT name 
+FROM sys.triggers 
+WHERE parent_id = OBJECT_ID('dbo.tDDLEventLog');
+```
+
+This will help you identify the trigger you need to disable.
+
+Let me know if you need any more help!

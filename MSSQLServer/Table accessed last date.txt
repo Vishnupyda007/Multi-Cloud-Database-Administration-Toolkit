@@ -1,0 +1,14 @@
+EXEC sp_MSforeachdb '
+USE [?];
+IF DB_ID(''?'') > 4 -- exclude system databases
+BEGIN
+    SELECT 
+        DB_NAME(database_id) AS DatabaseName,
+        OBJECT_NAME(object_id, database_id) AS TableName,
+        last_user_update AS LastAccessed
+    FROM sys.dm_db_index_usage_stats
+    WHERE database_id = DB_ID(''?'')
+    AND OBJECT_NAME(object_id, database_id) LIKE ''%CentralRepository%''
+    ORDER BY last_user_update DESC;
+END
+';

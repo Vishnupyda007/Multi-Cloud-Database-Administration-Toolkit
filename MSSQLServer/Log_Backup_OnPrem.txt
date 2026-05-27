@@ -1,0 +1,5 @@
+BACKUP LOG [CentralRepository_Replication] TO  DISK 
+= N'F:\Backup\Log\CentralRepository_Replication_backup_2024_01_04_100002_2673374.trn' 
+WITH  MAXTRANSFERSIZE = 65536, NOFORMAT, NOINIT,  
+NAME = N'CentralRepository_Replication_backup_2024_01_04_100002_2673374', 
+SKIP, REWIND, NOUNLOAD, COMPRESSION,  STATS = 5

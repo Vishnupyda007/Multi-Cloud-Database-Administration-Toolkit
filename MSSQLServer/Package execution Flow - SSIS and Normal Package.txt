@@ -1,0 +1,9 @@
+Package execution Flow :
+
+> Open VS 
+> Select new project in Integration services
+> after creating >>  right click on project name  >> change it to "convert to package deployment Model"
+
+> then paste the provided package in SSIS packages.
+
+> password to open a package is "crs@123"	

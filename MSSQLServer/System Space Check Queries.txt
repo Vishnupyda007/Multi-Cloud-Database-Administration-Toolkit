@@ -1,0 +1,10 @@
+In addition to sys.dm_os_volume_stats, there are several other SQL Server system views and functions that can help you gather disk space information:
+
+sys.master_files: This view contains a row per file of a database as stored in the master database. It includes information about the physical files used by the database, such as the file name, size, and type.
+sys.database_files: Similar to sys.master_files, but it provides information about the files for the current database.
+sys.dm_io_virtual_file_stats: This dynamic management view returns I/O statistics for data and log files. It can be useful for understanding the I/O performance of your database files.
+sys.dm_db_file_space_usage: This view returns space usage information for the database files, including the number of allocated and unallocated pages.
+sys.dm_db_log_space_usage: This view provides information about the transaction log space usage for the current database.
+sys.dm_os_sys_info: This view returns a miscellaneous set of information about the computer, including the number of physical and logical CPUs, and the amount of physical memory.
+sys.dm_os_performance_counters: This view returns a row per performance counter maintained by the SQL Server. It includes counters related to disk I/O, such as PhysicalDisk: % Disk Time and PhysicalDisk: Avg. Disk Queue Length.
+These views and functions can be combined in queries to provide comprehensive disk space and performance information for your SQL Server instance

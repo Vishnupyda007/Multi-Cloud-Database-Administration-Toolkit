@@ -1,0 +1,31 @@
+select percent_complete, * from sys.dm_exec_requests --where command like '%restore%'
+
+
+
+-----
+SELECT start_time, percent_complete, DATEADD (ss,DATEDIFF (ss,start_time,getdate()) / percent_complete * 100,start_time) AS Expected_end_time,
+
+st.text as SQL, command as Current_Command,session_id FROM
+
+sys.dm_exec_requests er
+
+CROSS APPLY
+
+sys.dm_exec_sql_text(er.sql_handle) st
+
+WHERE percent_complete > 0
+
+
+
+------
+
+SELECT    session_id
+    , percent_complete
+    , estimated_completion_time
+    , command
+    , status
+    , blocking_session_id
+FROM sys.dm_exec_requests
+WHERE session_id = '143'
+Go
+ 

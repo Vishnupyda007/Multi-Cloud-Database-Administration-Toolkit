@@ -1,0 +1,47 @@
+To determine the SSL version used by a cloud SQL Server, you can query the system views or use dynamic management views (DMVs). However, it's important to note that SQL Server doesn't directly expose SSL version details through a simple SQL query. You may need to combine SQL Server capabilities with some PowerShell or other script that can query the underlying OS or network configuration.
+ 
+Here's a way to use SQL Server to get some SSL/TLS information, although it might be limited:
+ 
+1. **Querying sys.dm_exec_connections:**
+   You can get information about encryption for current connections using the `sys.dm_exec_connections` DMV.
+ 
+```sql
+SELECT session_id,
+       connect_time,
+       net_transport,
+       protocol_type,
+       encrypt_option
+FROM sys.dm_exec_connections;
+```
+ 
+This query will give you details about whether the connection is encrypted, but not the specific SSL/TLS version. The `encrypt_option` column will indicate if encryption is used (`TRUE` or `FALSE`).
+ 
+2. **Using PowerShell:**
+   To get the SSL version information, a PowerShell script querying the underlying network configuration might be more appropriate. Here's an example of how you could approach this:
+ 
+```powershell
+# Get the SSL/TLS version used by SQL Server connections
+$ServerName = "YourSQLServerName.database.windows.net"
+$Port = 1433
+ 
+# Create a TCP connection to the server
+$TcpClient = New-Object System.Net.Sockets.TcpClient
+$TcpClient.Connect($ServerName, $Port)
+ 
+# Get the SSL Stream
+$SslStream = New-Object System.Net.Security.SslStream($TcpClient.GetStream(), $false, ({$true}))
+ 
+# Initiate SSL handshake
+$SslStream.AuthenticateAsClient($ServerName)
+ 
+# Output SSL/TLS version
+$SslStream.SslProtocol
+ 
+# Close the connection
+$SslStream.Close()
+$TcpClient.Close()
+```
+ 
+Replace `"YourSQLServerName.database.windows.net"` with your actual SQL Server name. This script will initiate a connection and display the SSL/TLS version used.
+ 
+For comprehensive and accurate details, especially in a managed cloud environment, consult your cloud provider's documentation or support for tools and logs that provide SSL/TLS details.

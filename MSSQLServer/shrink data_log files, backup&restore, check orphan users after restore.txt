@@ -1,0 +1,167 @@
+﻿>>>to shrink data_log files of Db<<<
+
+USE [DBNAME]
+GO
+DBCC SHRINKFILE (N'FILENAME', CURRENTSIZE)
+
+--------if datafile doesnt shrink execute the below code then again execute above script
+
+dbcc freeproccache   (dbcc > database consistency checker)
+
+
+
+>>>Execute SQL Server DBCC SHRINKFILE Without Causing Index Fragmentation or Data loss.<<<
+Reference Article--> https://www.mssqltips.com/sqlservertip/4368/execute-sql-server-dbcc-shrinkfile-without-causing-index-fragmentation/
+
+
+USE <<database_name>>
+GO
+DBCC SHRINKFILE (N'<<database_filename>>', <<target_size>>, TRUNCATEONLY)
+GO
+
+
+
+>>>backup onprim<<<
+
+BACKUP DATABASE [Reconciliation] TO  DISK = N'D:\CRSDEV\Reconciliation_backup_2023_08_08_0600041_0920933.bak' 
+WITH NOFORMAT, NOINIT,  NAME = N'Reconciliation-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, 
+COMPRESSION,  STATS = 5
+GO
+
+
+
+
+----- MI TO MI SERVER BACKUP/RESTORE SCRIPTS ----- 
+
+----- BACKUP ----- 
+
+BACKUP DATABASE [DB_NAME] TO URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_0.bak'
+WITH COPY_ONLY,BLOCKSIZE = 65536, MAXTRANSFERSIZE = 4194304,CHECKSUM, STATS=10
+
+-------or with another backup URL-------------
+
+BACKUP DATABASE [DB_NAME] TO URL
+= N'https://ctssqlminonprod.blob.core.windows.net/sqlmibackup/DB_NAME_CURRENTDATE_0.bak'
+WITH COPY_ONLY,BLOCKSIZE = 65536, MAXTRANSFERSIZE = 4194304,CHECKSUM, STATS=10
+
+
+----- Eg -----
+ 
+BACKUP DATABASE [OneC_676_GDPR] TO URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/OneC_676_GDPR_02052022_0.bak'
+WITH COPY_ONLY,BLOCKSIZE = 65536, MAXTRANSFERSIZE = 4194304,CHECKSUM, STATS=10
+
+
+NOTE ===
+If the db size is <=70 GB then we can use one url only.
+If the db size is >70 GB then we can use more than one url and they
+can be splitted with 0,1,2.. at the end of the url i.e.
+BACKUP DATABASE [DB_NAME] TO URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_0.bak',
+URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_1.bak',
+URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_2.bak',
+.....URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_n.bak'
+WITH COPY_ONLY,BLOCKSIZE = 65536, MAXTRANSFERSIZE = 4194304,CHECKSUM, STATS=10
+
+
+----- RESTORE ----- 
+
+RESTORE DATABASE [DBNAME] FROM URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DBNAME_DATE_0.bak'
+go
+
+------------------------------------------------------------
+
+FOR ONPREM DATABASES - 
+
+backup database [dbname] to disk=N'\\CTSC01135120501\DBBackup\DBname_full_date.bak' with compression,stats=10
+restore databse [dbname] from disk=N'\\CTSC01135120501\DBBackup\DBname_full_date.bak' with stats=10
+
+
+
+
+-----------------------
+>>>>>>>after restoring/migrating a Db, we need to check the users in security are proper or not if not do autofix<<<<<<<
+
+
+sp_change_users_login 'report' - to check for orphan users
+
+sp_change_users_login 'auto_fix','loginname' - to fix the orphan user and for multiple users, we have to use GO after every line.
+
+Sp_change_users_login 'update-one' 'username' 'loginname'
+Update one will establish synchronization between user name and login name.
+
+
+
+# After restoring or migrating a db, turn on trustworthy. To load a url for any web app, trustworthy in 'on' is imp. >>> alter database db_name SET trustworthy ON.
+
+
+#During Migration or restoration of a db, after completing all the process, Enabling trustworthy is imp. Also when user is getting issue while deploying the db in ADO pipeline or getting connection error in the website, always check ADO tools/Deploytools r mapped or not & trustworthy is enabled or not.
+
+
+
+
+--------Backup with Compression----------
+
+
+During which scenarios we have to take compression backup in sql MI
+
+Taking compressed backups in SQL Managed Instance (SQL MI) can be particularly beneficial in several scenarios:
+
+Storage Cost Reduction: Compressed backups reduce the amount of storage space required, which can significantly lower storage costs, especially for large databases1.
+
+Faster Backup and Restore: Compression can speed up both backup and restore operations because the amount of data written to and read from storage is reduced2.
+
+Network Bandwidth Savings: When transferring backups over the network, compressed backups use less bandwidth, which can be crucial for environments with limited network capacity2.
+
+Regulatory and Compliance Requirements: Some regulations may require frequent backups. Compression helps manage the storage and performance impact of these frequent backups2.
+
+Disaster Recovery: In disaster recovery scenarios, compressed backups can help ensure that backups are completed quickly and efficiently, minimizing downtime1.
+
+Development and Testing: When creating backups for development or testing purposes, compression can help manage storage and improve the speed of creating and restoring these backups2.
+
+Would you like more details on how to configure compressed backups in SQL MI?
+
+1: Automatic, geo-redundant backups - Azure SQL Managed Instance 2: How to take secure, on-demand backups on SQL Managed Instance
+
+1
+Automatic, geo-redundant backups - Azure SQL Managed Instance
+
+2
+How to take secure, on-demand backups on SQL Managed Instance
+
+compression backup SQL Managed Instance scenarios
+
+
+
+What are the limitations of compression?
+
+While compression in SQL Managed Instance offers many benefits, there are some limitations to be aware of:
+
+CPU Overhead: Compression and decompression require additional CPU resources. This can impact performance, especially for CPU-intensive workloads1.
+
+Not Available for All Data Types: Certain data types, such as IMAGE, TEXT, and NTEXT, are not affected by data compression2.
+
+System Tables: Compression cannot be applied to system tables2.
+
+Partitioned Tables: If a table has nonaligned indexes, you cannot change the compression setting of a single partition2.
+
+Edition Limitations: Compression features are not available in all editions of SQL Server. It's important to check the specific edition you are using to ensure it supports the desired compression features1.
+
+Indexing: Data compressed using the COMPRESS function cannot be indexed1.
+
+These limitations should be considered when planning to use compression in your SQL Managed Instance environment. If you have any specific scenarios or further questions, feel free to ask!
+
+1: Data compression - SQL Server | Microsoft Learn 2: Enable compression on a table or index - SQL Server
+
+1
+Data compression - SQL Server | Microsoft Learn
+
+2
+Enable compression on a table or index - SQL Server
+
+limitations of compression in SQL Managed Instance

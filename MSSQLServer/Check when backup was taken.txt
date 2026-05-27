@@ -1,0 +1,5 @@
+select a.backup_set_id, a.server_name, a.database_name, a.name, a.user_name, a.position, a.software_major_version, a.backup_start_date, backup_finish_date, a.backup_size, a.recovery_model, b.physical_device_name
+from msdb.dbo.backupset a join msdb.dbo.backupmediafamily b
+on a.media_set_id = b.media_set_id
+where a.database_name = 'OneC_2079'  --- here you mention the db name for which you need to check
+order by a.backup_finish_date desc

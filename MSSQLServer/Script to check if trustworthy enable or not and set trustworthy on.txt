@@ -1,0 +1,10 @@
+----------------- Script to check if trustworthy is enabled or not -------------------------- 
+ 
+select name,is_trustworthy_on from sys.databases where name = 'database_name'
+ 
+-> This query will return 1 if it enabled and 0 if it is disabled.
+ 
+-----------------Set trustworthy on for a db -------------------------------------------
+ 
+alter database database_name set trustworthy on
+ 

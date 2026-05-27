@@ -1,0 +1,9 @@
+USE master;
+GO
+DECLARE @view_name NVARCHAR(128) = 'Mainspring_EDS_Projects_VIEW';
+DECLARE @sql NVARCHAR(MAX) = '';
+SELECT @sql = @sql + 'SELECT ''' + name + ''' AS database_name FROM [' + name + '].sys.views WHERE name = ''' + @view_name + ''' UNION ALL '
+FROM sys.databases
+WHERE state_desc = 'ONLINE';
+SET @sql = LEFT(@sql, LEN(@sql) - 10); -- Remove the last 'UNION ALL'
+EXEC sp_executesql @sql;

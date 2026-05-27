@@ -1,0 +1,23 @@
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    SUM(size * 8.0 / 1024 / 1024) AS TotalSize_GB,
+    SUM(size * 8.0 / 1024 / 1024)
+    - SUM(FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 / 1024) AS ConsumedSize_GB,
+    SUM(size * 8.0 / 1024 / 1024)
+    - SUM(FILEPROPERTY(name, 'SpaceUsed') * 8.0 / 1024 / 1024) AS AvailableFreeSize_GB
+FROM
+    sys.master_files
+GROUP BY
+    database_id;
+
+---------------- query in MB-----------
+
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    SUM(size) / 128.0 AS TotalSize_MB,
+    SUM(size) / 128.0 - SUM(FILEPROPERTY(name, 'SpaceUsed')) / 128.0 AS ConsumedSize_MB,
+    SUM(size) / 128.0 - SUM(FILEPROPERTY(name, 'SpaceUsed')) / 128.0 AS AvailableFreeSize_MB
+FROM
+    sys.master_files
+GROUP BY
+    database_id;

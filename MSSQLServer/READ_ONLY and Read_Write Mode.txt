@@ -1,0 +1,15 @@
+Let’s learn Making Database to Read Only and Changing Database to Read/Write with the help of T-SQL scripts.
+
+Here is the answer:
+
+Make Database Read Only
+USE [master]
+GO
+ALTER DATABASE [TESTDB] SET READ_ONLY WITH NO_WAIT
+GO
+Make Database Read/Write
+USE [master]
+GO
+ALTER DATABASE [TESTDB] SET READ_WRITE WITH NO_WAIT
+GO
+If you face an error that if the database is already in use, you can resolve the same by making database in single user mode – here is the guideline SQL SERVER – ALTER DATABASE dbname SET SINGLE_USER WITH ROLLBACK IMMEDIATE.

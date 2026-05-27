@@ -1,0 +1,55 @@
+SQL Server 2016 - How to get last logged in date for user?
+Asked 6 years, 7 months ago
+Modified 2 years, 3 months ago
+Viewed 113k times
+19
+
+How can I get the last logged in date for certain user. I googled and stumbled upon this query
+
+SELECT name, accdate FROM sys.syslogins
+But the accdate column seems to be deprecated, and does not update.
+
+I have another clue
+
+SELECT login_name, max(login_time) as last_logged_in 
+FROM sys.dm_exec_sessions GROUP BY login_name
+But it shows me results only for system users, not the ones which I created with this query
+
+CREATE USER test1 FOR LOGIN test1 WITH DEFAULT_SCHEMA = 'test1'
+The question is, how to make custom created users appear in sys.dm_exec_sessions, or what's the alternative to that solution?
+
+sql-serverdatabase-administration
+Share
+Improve this question
+Follow
+asked Dec 20, 2017 at 11:49
+ixnv's user avatar
+ixnv
+19311 gold badge11 silver badge77 bronze badges
+1
+Not sure why, but accdate is actually the same as createdate. If you look at the DDL of sys.syslogins you'll see that they are defined as ` createdate = p.create_date` and accdate = p.create_date. I'm not sure that you can get the Login Dates from SQL Server. You'll likely need to set up some kind of extended event to store this information. I suppose you could also set up a Server Level Trigger as well, but just make sure the table your inserting to is accessible by public, and no users have DENY (otherwise they won't be able to log in). I don't really recommend a TRIGGER. – 
+Thom A
+ CommentedDec 20, 2017 at 12:00
+1
+You might have more joy with this question over on Stack DBA. As @Larnu said I don't think SQL Server does this, out of the box. Investigate extended events. – 
+David Rushton
+ CommentedDec 20, 2017 at 12:16
+Near-duplicate of stackoverflow.com/questions/1278609/… – 
+Jon Schneider
+ CommentedAug 1, 2022 at 13:53
+Add a comment
+3 Answers
+Sorted by:
+
+Highest score (default)
+16
+
+Use sys.dm_exec_sessions system view That
+
+shows information about all active user connections and internal tasks. This information includes client version, client program name, client login time, login user, current session setting, and more.
+
+Here’s a little script hopes help you out!
+
+SELECT login_name [Login] , MAX(login_time) AS [Last Login Time]
+FROM sys.dm_exec_sessions
+GROUP BY login_name;

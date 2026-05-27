@@ -1,0 +1,44 @@
+In order to check whether the job exists or not by filtering it out.
+To search for existing job first:
+	- connect to the required server.
+	- go to job activity monitor  in sql server agent.
+	- click on filter and enter the name of the job to be searched.
+	- down below check the apply filter
+	- click on Okay
+	- we'll get a window if there are any existing jobs with that name it'll show some records and if not it'll show blank
+
+
+In order to create new job 
+	- first we need to connect to the required server
+	- we need to first check whether the job already exist or not by following above steps
+	- If job does not exist then we need to go to jobs folder in the sql server right clck on 'Jobs'
+	- click on 'New Job'
+	- a window will open with the name 'New Job'
+	- there we need to give the name of the job
+	**- Owner Name has to be given 'sa'
+	- then on the left of the window we need to click on 'Steps'
+	- below there's a button 'New' we need to click on that
+	- we need to give Step Name which will be same as file name 
+	**- we need to select the type i.e. 'SQL Server Integration Service Package'
+	**- then we need to select 'Package source' 
+		- if we are taking the file from our system then we need to select 'File system'
+	- then we need to Click in ... of Package below and select  the file from the folder where we have saved it 
+	**- we need to click on 'Execution options' where we'll need to give password i.e. crs@123 then click on 'OK'
+	- we need to check 'Use 32-bit runtime'
+	- then on the left we'll click on 'Advanced' where we need to check 
+		- 'Log to table'
+		- 'Include step output in history'
+		- click on OK
+	- click on 'OK'
+	- we can check whether the Job is created or not by double clicking on 'Jobs' in sql server 
+		- there we'll find the name if the job would have been created
+	- then we'll right click on the name of the job 
+		- click 'Start Job at Step'
+		- if the job is successfully runned 
+			- right click on job name click on 'View history'
+			- take the ss and send the mail that ur job has been successfully created 
+		- if the Job is unsuccessful 
+			- goto 'View History'
+			- take the ss and send the mail with the ss and tell the person about the error recieved 
+
+

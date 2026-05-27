@@ -1,0 +1,48 @@
+=== To check/add a tns entry in SIT server ===
+
+Step 1: Connect to sit server as a vm i.e. - open rdp connection
+window and enter the server - CTSC01048403401
+
+Step 2: Follow the following path to reach tnsnames(ora file)
+in Drive D [admin]-
+
+D:\app\client\product\12.1.0\client_32\network\admin  -> tnsnames(ora file)
+
+Step 3: Copy this file on desktop and open using notepad.
+
+Step 4: Open the file and check for the required tns entry.
+
+If the entry is already there leave the file as it is
+
+Else follow the further steps- 
+
+Step 5: If the entry is not available then copy it in the already available format.
+
+Step 6: After copying the tns entry copy the tns file back to the admin folder.
+
+Step 7: Follow the following path to reach tnsnames(ora file)
+in Drive D [odp32]-
+
+D:\odp32\network\admin -> tnsnames(ora file)
+
+Repeat step 3, 4, 5, 6.
+
+After placing the tns entry in both the files
+open cmd as administrator and give the following commands - 
+
+tnsping tnsname -- here tnsname will be the name of tns entry(eg - ESADEVA)
+telnet __host_number__ __port_number__ -- host number and port number will
+be the ones mentioned in the added tns entry.
+
+
+=== To check/add a tns entry in UAT server ===
+
+Procedure for UAT server is same as above except for a few changes - 
+
+Step 1: server - CTSC01048405301
+
+Step 2: Path for tnsnames(ora file) - 
+D:\app\client\product\12.1.0\client_32\product\12.1.0\client_1\network\admin
+
+Step 7: Path for tnsnames(ora file) - 
+D:\odp32\network\admin

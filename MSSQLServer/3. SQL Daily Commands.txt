@@ -1,0 +1,235 @@
+#DDL---->1. Create, 2. Alter, 3. Drop- to drop table;db, 4. Truncate- to delete all data in the table without where clause.
+
+#DML---->1. select, insert, update, delete- to delete record if no where clause, it deletes whole table and know the
+difference b/w truncate and delete.
+
+#DCL---->grant, revoke, Deny
+
+#TCL---->commit, rollback, savepoint
+
+>sp_whoisavtive. kill session_ID
+
+>View running processes on SQL Server with:
+    sp_who2
+
+>View details of active processes on SQL Server with:
+    sp_who2 active
+
+>View currently blocked processes with:
+
+   select * from sys.sysprocesses where blocked != 0
+
+>--Check lock information with:
+SELECT * FROM sys.dm_tran_locks
+
+>sp_helpdb - get dbs and their sizes
+
+>xp_fixeddrives- to get drives space of onprem servers
+
+>select * from tbl_name with (nolock) - to not lock with others sessions who r fetching data for same table or view
+
+>sp_helptext ObjName- to get view, sp, funcs definition
+
+>sp_helpindex ObjName- to get indexes in a table
+
+>sp_spaceused ObjName - gives object size, indexes size of it.
+
+>sp_depends tblname
+
+>SP_helpstats N'tblName', 'ALL' - to get stats in the table
+
+>sp_configure- to get configurations of a sql server
+
+>SELECT * FROM sysobjects WHERE name LIKE '%table_name%'  - Retrieve table information 
+
+>--Check the server collation setting using:
+SP_HELPSORT
+
+>-Monitor query memory usage with:
+SELECT * FROM sys.dm_exec_query_memory_grants
+
+>--Retrieve index usage statistics with:
+SELECT * FROM sys.dm_db_index_usage_stats ORDER BY object_id, index_id
+
+>--View schedulers and tasks with:
+SELECT * FROM sys.dm_os_schedulers WHERE scheduler_id < 255
+
+>--Identify high CPU queries using:
+SELECT * FROM sys.dm_exec_query_stats
+
+>Verify login permissions with:
+  sp_helplogins 'Loginname'
+
+>sp_helpuser:
+Verify users in the database with:
+   sp_helpuser
+
+>View information about log space usage with:
+
+   DBCC SQLPERF(logspace)
+
+>To shrink db files:
+USE [DBNAME]
+GO
+DBCC SHRINKFILE (N'FILENAME', CURRENTSIZE)
+
+--------if datafile doesnt shrink execute the below code then again execute above script
+
+dbcc freeproccache   (dbcc > database consistency checker)
+
+>>>>backup onprim<<<
+
+BACKUP DATABASE [Reconciliation] TO  DISK = N'D:\CRSDEV\Reconciliation_backup_2023_08_08_0600041_0920933.bak' 
+WITH COPY_ONLY, NOFORMAT, NOINIT,  NAME = N'Reconciliation-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, 
+COMPRESSION,  STATS = 5
+GO
+
+>MI TO MI SERVER BACKUP/RESTORE SCRIPTS ----- 
+
+----- BACKUP ----- 
+
+BACKUP DATABASE [DB_NAME] TO URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_0.bak'
+WITH COPY_ONLY,BLOCKSIZE = 65536, MAXTRANSFERSIZE = 4194304,CHECKSUM, STATS=10
+
+> Restore:
+
+RESTORE DATABASE [DB_NAME] FROM URL
+= N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/DB_NAME_CURRENTDATE_0.bak'
+
+
+>sp_change_users_login 'report' - to check for orphan users
+
+sp_change_users_login 'auto_fix','loginname' - to fix the orphan user and for multiple users, we have to use GO after every line.
+
+Sp_change_users_login ‘update-one’ ‘username’ ‘loginname’
+Update one will establish synchronization between user name and login name
+
+
+>To 'ON' trustworthy:
+alter database db_name SET trustworthy ON
+
+>View the error log with:
+
+   sp_readerrorlog
+
+>To create SQL Login:
+
+USE [master]
+GO
+
+CREATE LOGIN [EDS_SUB] WITH PASSWORD=N'Ed$$ub@2023', DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF
+GO   ---------(script to create sql login)
+
+ALTER LOGIN login_name ENABLE/DISABLE   -------(to enable or disable any login, by default without this> login will be enabled)
+
+
+>---------Script for Server role login script------------------
+
+use [master]
+GO
+GRANT VIEW SERVER STATE TO [EDS_SUB]
+GO
+
+
+-------------script to create Database role----------------
+
+USE [CentralRepository]
+GO
+CREATE ROLE [Discovercrsrole]
+GO
+
+
+-----------script to alter role or grant a role------------
+
+USE [CentralRepository]
+GO
+ALTER ROLE [db_datareader] ADD MEMBER [CTS\ITOpsEDSPRODL3ReadUser]
+GO
+
+>
+-------------script to create SA in non MI servers or AAD without CTS\ in MI servers----------
+
+USE [master]
+GO
+
+CREATE LOGIN [CTS\ITOpsEDSPRODL3ReadUser] FROM WINDOWS WITH DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english]
+GO         -----------(OnPrem or SA enabled servers)
+
+
+USE [master]
+GO
+
+CREATE LOGIN [CTS\ITOpsEDSPRODL3ReadUser] WITH DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english]
+GO              ----------(AAD enabled servers)
+
+
+> To get IP and Port of a MI Server:
+
+SELECT LOCAL_NET_ADDRESS, LOCAL_TCP_PORT
+FROM SYS.DM_EXEC_CONNECTIONS
+WHERE LOCAL_NET_ADDRESS IS NOT NULL ;
+
+-----For OnPrem Servers: CMD command - ping servername  [eg - ping CTSINAZSINCDDB1]
+
+
+>--------------Index creation--------------
+
+CREATE NONCLUSTERED INDEX INDXC_UserAccessDetails_UAM_ID
+ON [dbo].[UserAccessDetails] ([UAM_ID])
+
+>>>>>>>>>>>>>INDEX rebuild performance improvement query<<<<<<<<<<<<
+> Fragmentation is exists when indexes have pages in which the logical ordering, based on the key value, 
+does not match the physical ordering inside the data file. Fragmentation is of two types> Internal and external fragmentation.
+>> By using the system function   "sys.dm_db_index_physical_stats" -   you can detect fragmentation in a specific index, all indexes on a table or indexed view, all indexes in a database, or all indexes in all the databases. 
+It can also provide info on each partition.
+Note: We have to rebuild the index when the fragmentation is >30%. We can do index rebuild for a table through UI also but while doing UI method it will ask online or offline rebuild.
+If fragmentation is >5% and <=30% then use reogranize the index. Reorganize is always executed online.
+
+  syx- ALTER INDEX ALL ON SchemaName.TableName REBUILD  or ALTER INDEX INXname ON SchemaName.TableName REBUILD
+
+  syx- alter index all on schemaName.TblName Reorganize
+
+>Grant access to create and manage SQL Jobs in SQL Server Agent - 
+Map the login to msdb database and provide the following access -
+SQLAgentOperatorRole,
+SQLAgentReaderRole,
+SQLAgentUserRole 
+
+
+>>>> To get all the objects excluding Sys objects of a DB:
+
+select * from sys. objects where type_desc in ('VIEW','INTERNAL_TABLE','USER_TABLE','SQL_STORED_PROCEDURE','TYPE_TABLE','SQL_TABLE_VALUED_FUNCTION','SERVICE_QUEUE','SQL_SCALAR_FUNCTION','SQL_INLINE_TABLE_VALUED_FUNCTION') order by name
+
+
+
+>>>>> to get details of columns of a table:
+
+select * from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='TableName'
+
+
+
+>>>>>>To get Users list in the DB:
+
+select name FROM sys.database_principals WHERE [type] IN ('X','E')
+
+
+
+>>>>>>>>To get list of logins in the Server:
+
+select * from sys.syslogins
+
+
+
+>>>>>>>To get completion percentage of a session:
+
+select percent_complete, * from sys.dm_exec_requests
+
+
+
+>>>>>To get uptime report of a server:
+
+SELECT sqlserver_start_time FROM sys.dm_os_sys_info;
+
+
+

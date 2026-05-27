@@ -1,0 +1,61 @@
+-------------------ROllBack Status------------------
+
+SELECT 
+    session_id,
+    blocking_session_id,
+    wait_type,
+    wait_time,
+    wait_resource,
+    last_wait_type,
+    transaction_id,
+    is_user_transaction,
+    is_local,
+    database_id,
+    client_interface_name,
+    host_name,
+    program_name,
+    login_name
+FROM 
+    sys.dm_exec_requests
+WHERE 
+    status = 'rollback';
+
+
+---------------OR-------------------
+ 
+SELECT 
+    request.session_id,
+    request.transaction_id,
+    transaction.name AS transaction_name,
+    transaction.begin_time AS transaction_begin_time,
+    request.status,
+    request.command,
+    request.blocking_session_id,
+    request.wait_type,
+    request.wait_time,
+    request.wait_resource
+FROM 
+    sys.dm_tran_session_transactions AS trans
+INNER JOIN 
+    sys.dm_tran_active_transactions AS transaction
+ON 
+    trans.transaction_id = transaction.transaction_id
+INNER JOIN 
+    sys.dm_exec_requests AS request
+ON 
+    trans.session_id = request.session_id
+WHERE 
+    request.status = 'rollback';
+ 
+
+
+---------------------OR----------------------
+ 
+
+SELECT session_id, percent_complete, last_wait_type, wait_resource, wait_time, wait_type
+
+FROM sys.dm_exec_requests
+
+WHERE status = 'rollback'
+
+ 

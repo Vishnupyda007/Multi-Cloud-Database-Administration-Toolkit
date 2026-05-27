@@ -1,0 +1,1 @@
+select database_ID, name from sys.databases

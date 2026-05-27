@@ -1,0 +1,14 @@
+Step 1: check the space of DB in source server
+step 2: check the space of destination server >if there is space, proceed else shrink
+step 3: if the DB is already present in dest server, take the backup, note down the users and their access. Run the access script and then drop it.
+step 4:take backup from source server.
+step 5: restore it in dest server. again run the access script and check the differences. Run the Orphan Users sp to check orphan users. 
+Step 6: Enable trustworthy post the restoration of DB.
+step 6: if any MSI keys are missing, create MSI key and allocate the same access.
+If any users are missing, check for orphan users and run the auto-fix script.
+
+>>> delete db only when user says
+
+>>> if source server is Azure on-prem, follow the MI server backup process.
+>>> if source server is On-prem, follow disk to URL.
+

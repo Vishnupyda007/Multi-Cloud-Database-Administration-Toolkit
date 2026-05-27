@@ -1,0 +1,7 @@
+sp_helplogins ----to get logins in server level
+
+sp_helplogins [login_Name] ----- to get specific login in server level
+
+sp_helpuser -----to get users in the DB level
+
+sp_helpuser [Username]  ------to get specific user in the DB level

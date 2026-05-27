@@ -1,0 +1,109 @@
+--> sp_helptext funcName or SP or Viewname  - query used to get script of Func,SP or View
+
+
+
+-----query to know views,functions, procedures------------
+
+
+select distinct(table_type) from INFORMATION_SCHEMA.TABLES
+select count(*) from INFORMATION_SCHEMA.TABLES where TABLE_TYPE='base table'
+select count(*) from INFORMATION_SCHEMA.TABLES where TABLE_TYPE='view'
+
+ 
+select distinct(ROUTINE_TYPE) from INFORMATION_SCHEMA.ROUTINES
+select count(*) from INFORMATION_SCHEMA.ROUTINES where ROUTINE_TYPE='function'
+select count(*) from INFORMATION_SCHEMA.ROUTINES where ROUTINE_TYPE='procedure'
+
+ 
+select ROUTINE_NAME from INFORMATION_SCHEMA.ROUTINES where ROUTINE_TYPE='procedure'
+select table_name from INFORMATION_SCHEMA.TABLES where TABLE_TYPE='base table'
+
+
+-----------------------
+
+
+To view the script of functions in a database in SQL Server, you can use SQL Server Management Studio (SSMS) or run SQL queries to retrieve the script. Here's how to do it using SSMS:
+
+ 
+
+**Using SQL Server Management Studio (SSMS):**
+
+ 
+
+1. Open SQL Server Management Studio (SSMS).
+
+ 
+
+2. Connect to the SQL Server instance where the database containing the functions is located.
+
+ 
+
+3. In the Object Explorer, expand the server node, then expand the Databases node to see the list of databases.
+
+ 
+
+4. Expand the database where your functions are located.
+
+ 
+
+5. Expand the "Programmability" folder.
+
+ 
+
+6. Expand the "Functions" folder. You will see subfolders for different types of functions, such as "Scalar-Valued Functions," "Table-Valued Functions," and "Aggregate Functions."
+
+ 
+
+7. Locate the type of function you want to view (e.g., Scalar-Valued Functions).
+
+ 
+
+8. Right-click on the specific function you want to script, and select "Script Function as" > "CREATE To" and choose either "New Query Editor Window" or "File."
+
+ 
+
+   - "New Query Editor Window" will open a new query window with the script.
+
+   - "File" allows you to save the script to a file.
+
+ 
+
+9. The script for the selected function will be generated in a new query window or saved to a file.
+
+ 
+
+**Using SQL Queries:**
+
+ 
+
+You can also retrieve the script of a specific function using SQL queries. Here's a query to script a scalar-valued function:
+
+ 
+
+```sql
+
+USE YourDatabaseName; -- Replace with the name of your database
+
+GO
+
+ 
+
+DECLARE @FunctionName NVARCHAR(128) = 'YourFunctionName'; -- Replace with the name of your function
+
+ 
+
+SELECT OBJECT_DEFINITION(OBJECT_ID(@FunctionName)) AS [FunctionScript];
+
+```
+
+ 
+
+Replace 'YourDatabaseName' with the name of your database and 'YourFunctionName' with the name of the function you want to script. When you run this query, it will return the script of the specified scalar-valued function.
+
+ 
+
+You can adapt the query for table-valued functions or other types of functions by changing the function type in the query and providing the appropriate function name.
+
+ 
+
+These methods allow you to retrieve the script of functions in a SQL Server database, which can be useful for documentation, analysis, or modification of the functions.

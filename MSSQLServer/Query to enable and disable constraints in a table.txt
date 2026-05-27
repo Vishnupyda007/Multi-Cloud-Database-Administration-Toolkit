@@ -1,0 +1,18 @@
+---- Disable all  constraints in a table--
+ 
+--ALTER TABLE TableName NOCHECK CONSTRAINT ALL
+ 
+---- Enable all  constraints in a table ------
+ 
+--ALTER TABLE TableName CHECK CONSTRAINT ALL
+
+---- Disable single constraint
+--ALTER TABLE TableName NOCHECK CONSTRAINT Constraintname
+---- Enable single constraint
+--ALTER TABLE TableName CHECK CONSTRAINT Constraintname
+
+
+---- Disable all constraints for database
+--EXEC sp_msforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT all';
+---- Enable all constraints for database
+--EXEC sp_msforeachtable 'ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all';
