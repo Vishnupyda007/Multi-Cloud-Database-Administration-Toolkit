@@ -1,0 +1,1 @@
+Compress-Archive -Path "\\CTSC00969373301\Backup\temp\test2\*" -DestinationPath "\\CTSC00969373301\Backup\temp\test2.zip" -Force
