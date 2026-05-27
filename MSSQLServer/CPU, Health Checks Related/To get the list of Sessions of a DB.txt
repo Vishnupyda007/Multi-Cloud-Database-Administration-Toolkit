@@ -1,0 +1,14 @@
+SELECT 
+    s.session_id,
+    s.login_name,
+    s.status,
+    s.host_name,
+    s.program_name,
+    s.login_time,
+    s.last_request_start_time,
+    s.last_request_end_time
+FROM 
+    sys.dm_exec_sessions s
+WHERE 
+    s.database_id = DB_ID('YourDatabaseName')
+    AND s.is_user_process = 1

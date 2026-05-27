@@ -1,0 +1,29 @@
+> Sp_helptext SpName  -- used to get script text of specific Sp
+
+> Sp_whoisactive   --  This will give you list of active sessions
+
+> Sp_who2    -- This will give you list of all the sessions.
+You can run any but its better to run the first one(SP_whoisactive)
+
+In the result you will get a column as blocking_id under that you can check which session is causing block.
+
+
+> kill sp_id  -- to kill a block but we cant do without app owner approval.
+
+
+
+---------------------
+
+
+SELECT 
+    session_id AS BlockingSessionID,
+    blocking_session_id AS BlockedBySessionID,
+    wait_type,
+    wait_time,
+    last_wait_type,
+    status,
+    command,
+    text AS QueryText
+FROM sys.dm_exec_requests
+CROSS APPLY sys.dm_exec_sql_text(sql_handle)
+WHERE blocking_session_id <> 0;

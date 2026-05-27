@@ -1,0 +1,77 @@
+DECLARE @sql NVARCHAR(MAX);
+DECLARE @dbname NVARCHAR(128);
+
+-- Create a temporary table to store results
+CREATE TABLE #DatabaseFileStats (
+    ServerName NVARCHAR(128),
+    DBName NVARCHAR(128),
+    [Name] NVARCHAR(128),
+    FileId INT,
+    PhysicalName NVARCHAR(260),
+    TotalSizeMB DECIMAL(18,2),
+    AvailableSpaceMB DECIMAL(18,2),
+    UsedSpaceMB DECIMAL(18,2),
+    PercentageUsed DECIMAL(5,2),
+    TotalDatabaseSizeMB NVARCHAR(50),
+    PercentageOfTotalMBUsed NVARCHAR(10)
+);
+
+-- Loop through each database
+DECLARE db_cursor CURSOR FOR
+SELECT name FROM sys.databases WHERE state_desc = 'ONLINE';
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @dbname;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Set up the dynamic SQL for each database
+    SET @sql = N'
+        USE ' + QUOTENAME(@dbname) + ';
+        WITH FileStats AS (
+            SELECT
+                @@servername AS ServerName,
+                DB_NAME() AS DBName,
+                [name],
+                file_id,
+                physical_name,
+                [size] / 128.0 AS TotalSizeMB,
+                (CAST(FILEPROPERTY(name, ''SpaceUsed'') AS int) / 128.0) AS UsedSpaceMB,
+                ([size] / 128.0 - CAST(FILEPROPERTY(name, ''SpaceUsed'') AS int) / 128.0) AS AvailableSpaceMB,
+                (100.0 * (CAST(FILEPROPERTY(name, ''SpaceUsed'') AS int) / 128.0) / ([size] / 128.0)) AS PercentageUsed,
+                ROW_NUMBER() OVER (PARTITION BY DB_NAME() ORDER BY file_id) AS RowNum,
+                SUM([size] / 128.0) OVER() AS TotalDatabaseSizeMB,
+                (100.0 * SUM(CAST(FILEPROPERTY(name, ''SpaceUsed'') AS int) / 128.0) OVER() / SUM([size] / 128.0) OVER()) AS PercentageOfTotalMBUsed
+            FROM sys.database_files
+            WHERE [name] != ''XTP''
+        )
+        INSERT INTO #DatabaseFileStats
+        SELECT
+            ServerName,
+            DBName,
+            [name],
+            file_id,
+            physical_name,
+            TotalSizeMB,
+            AvailableSpaceMB,
+            UsedSpaceMB,
+            PercentageUsed,
+            CASE WHEN RowNum = 1 THEN CAST(TotalDatabaseSizeMB AS NVARCHAR(50)) ELSE '' '' END AS TotalDatabaseSizeMB,
+            CASE WHEN RowNum = 1 THEN CAST(PercentageOfTotalMBUsed AS NVARCHAR(10)) ELSE '' '' END AS PercentageOfTotalMBUsed
+        FROM FileStats;
+    ';
+
+    -- Execute the dynamic SQL
+    EXEC sp_executesql @sql;
+
+    FETCH NEXT FROM db_cursor INTO @dbname;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+
+-- Select the results from the temporary table
+SELECT * FROM #DatabaseFileStats;
+
+-- Drop the temporary table
+DROP TABLE #DatabaseFileStats;

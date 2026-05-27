@@ -1,0 +1,64 @@
+SELECT    @@SERVERNAME,[Usedspace(GB)],
+        [FreeSpace(GB)],
+        --CAST(([FreeSpace(GB)]*100)/[Usedspace(GB)] AS DECIMAL(15,2)) AS [% FreeSpace],
+        ([Usedspace(GB)]+[FreeSpace(GB)]) as [ReservedSpace(GB)]
+FROM
+    (SELECT DISTINCT
+            OVS.volume_mount_point [Drive],
+            CAST(OVS.total_bytes / 1073741824 AS DECIMAL(15,2)) [Usedspace(GB)],
+            CAST(OVS.available_bytes / 1073741824 AS DECIMAL(15,2)) [FreeSpace(GB)]
+    FROM    sys.master_files SMF
+            CROSS APPLY sys.dm_os_volume_stats(SMF.database_id, SMF.[file_id]) OVS
+    ) AS Result;
+
+
+
+
+Let's break down the query step by step:
+
+### Main Query
+
+```sql
+SELECT    @@SERVERNAME,[Usedspace(GB)],
+        [FreeSpace(GB)],
+        --CAST(([FreeSpace(GB)]*100)/[Usedspace(GB)] AS DECIMAL(15,2)) AS [% FreeSpace],
+        ([Usedspace(GB)]+[FreeSpace(GB)]) as [ReservedSpace(GB)]
+FROM
+    (SELECT DISTINCT
+            OVS.volume_mount_point [Drive],
+            CAST(OVS.total_bytes / 1073741824 AS DECIMAL(15,2)) [Usedspace(GB)],
+            CAST(OVS.available_bytes / 1073741824 AS DECIMAL(15,2)) [FreeSpace(GB)]
+    FROM    sys.master_files SMF
+            CROSS APPLY sys.dm_os_volume_stats(SMF.database_id, SMF.[file_id]) OVS
+    ) AS Result;
+```
+
+### Explanation
+
+1. **Server Name**: `@@SERVERNAME` returns the name of the SQL Server instance.
+
+2. **Used Space (GB)**: `CAST(OVS.total_bytes / 1073741824 AS DECIMAL(15,2)) [Usedspace(GB)]` converts the total bytes used on each volume to gigabytes.
+
+3. **Free Space (GB)**: `CAST(OVS.available_bytes / 1073741824 AS DECIMAL(15,2)) [FreeSpace(GB)]` converts the available bytes on each volume to gigabytes.
+
+4. **Reserved Space (GB)**: `([Usedspace(GB)]+[FreeSpace(GB)]) as [ReservedSpace(GB)]` calculates the total reserved space (used + free) in gigabytes for each volume.
+
+5. **Commented Line**: The commented-out line `--CAST(([FreeSpace(GB)]*100)/[Usedspace(GB)] AS DECIMAL(15,2)) AS [% FreeSpace]` would calculate the percentage of free space if it were uncommented.
+
+### Subquery
+
+The subquery retrieves the disk space information for each volume:
+
+1. **Volume Mount Point**: `OVS.volume_mount_point [Drive]` gets the mount point of each volume.
+
+2. **Used Space (GB)**: `CAST(OVS.total_bytes / 1073741824 AS DECIMAL(15,2)) [Usedspace(GB)]` converts the total bytes used on each volume to gigabytes.
+
+3. **Free Space (GB)**: `CAST(OVS.available_bytes / 1073741824 AS DECIMAL(15,2)) [FreeSpace(GB)]` converts the available bytes on each volume to gigabytes.
+
+4. **Data Source**: The subquery uses `sys.master_files` and `sys.dm_os_volume_stats` to gather this information. `CROSS APPLY` is used to join these views based on the database and file IDs.
+
+### Why the Query Gives Two Rows
+
+The query gives two rows because the subquery retrieves distinct volume mount points from the `sys.dm_os_volume_stats` view. If there are two distinct volumes (e.g., `C:\` and `D:\`) on the server, the subquery will return two rows, one for each volume. Each row represents the disk space usage for a different volume.
+
+If you have any more questions or need further clarification, feel free to ask!

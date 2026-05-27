@@ -1,0 +1,41 @@
+---Count of Active sessions on Each DB
+SELECT 
+    DB_NAME(s.database_id) AS DatabaseName,
+    COUNT(s.session_id) AS ActiveSessions
+FROM 
+    sys.dm_exec_sessions s
+JOIN 
+    sys.dm_exec_requests r ON s.session_id = r.session_id
+WHERE 
+    s.is_user_process = 1
+GROUP BY 
+    s.database_id;
+
+
+
+------Count of active and sleeping session of each db
+SELECT 
+    DB_NAME(s.database_id) AS DatabaseName,
+    SUM(CASE WHEN r.session_id IS NOT NULL THEN 1 ELSE 0 END) AS ActiveSessions,
+    SUM(CASE WHEN r.session_id IS NULL THEN 1 ELSE 0 END) AS SleepingSessions
+FROM 
+    sys.dm_exec_sessions s
+LEFT JOIN 
+    sys.dm_exec_requests r ON s.session_id = r.session_id
+WHERE 
+    s.is_user_process = 1
+GROUP BY 
+    s.database_id;
+
+
+
+---Total sessions of a DB
+SELECT 
+    DB_NAME(s.database_id) AS DatabaseName,
+    COUNT(s.session_id) AS TotalSessions
+FROM 
+    sys.dm_exec_sessions s
+WHERE 
+    s.is_user_process = 1
+GROUP BY 
+    s.database_id;

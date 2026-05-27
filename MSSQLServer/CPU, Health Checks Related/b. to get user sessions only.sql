@@ -1,0 +1,1 @@
+select * from sys.dm_exec_sessions where is_user_process = 0

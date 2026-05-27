@@ -1,0 +1,2 @@
+select * from msdb.dbo.sysmail_profile
+select * from msdb.dbo.sysmail_profileaccount

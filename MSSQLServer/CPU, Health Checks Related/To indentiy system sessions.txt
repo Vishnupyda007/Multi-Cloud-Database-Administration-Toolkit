@@ -1,0 +1,10 @@
+SELECT 
+    session_id,
+    login_name,
+    host_name,
+    program_name,
+    status
+FROM 
+    sys.dm_exec_sessions
+WHERE 
+    is_user_process = 0;

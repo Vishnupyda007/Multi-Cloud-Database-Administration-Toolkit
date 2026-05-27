@@ -1,0 +1,25 @@
+SELECT 
+    d.name AS DatabaseName,
+    SUM(mf.size * 8 / 1024 / 1024) AS TotalSizeGB,
+    SUM(CAST(FILEPROPERTY(mf.name, 'SpaceUsed') AS INT) * 8 / 1024 / 1024) AS UsedSpaceGB,
+    SUM(mf.size * 8 / 1024 / 1024) - SUM(CAST(FILEPROPERTY(mf.name, 'SpaceUsed') AS INT) * 8 / 1024 / 1024) AS FreeSpaceGB
+FROM 
+    sys.master_files mf
+JOIN 
+    sys.databases d ON mf.database_id = d.database_id
+GROUP BY 
+    d.name;
+
+
+
+-------
+
+EXEC sp_MSforeachdb 
+'USE [?];
+SELECT 
+    DB_NAME() AS DatabaseName,
+    SUM(size * 8 / 1024 / 1024) AS TotalSizeGB,
+    SUM(CAST(FILEPROPERTY(name, ''SpaceUsed'') AS INT) * 8 / 1024 / 1024) AS UsedSpaceGB,
+    SUM(size * 8 / 1024 / 1024) - SUM(CAST(FILEPROPERTY(name, ''SpaceUsed'') AS INT) * 8 / 1024 / 1024) AS FreeSpaceGB
+FROM sys.master_files
+GROUP BY type_desc;';

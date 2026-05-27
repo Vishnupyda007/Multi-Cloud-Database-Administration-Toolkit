@@ -1,0 +1,87 @@
+>>>>>> Block sessions come under Performance issue<<<<<<<
+
+
+For any block in any prod server we get mails
+
+>why blocks happen?
+
+
+When there are some long running queries or queries using multiple resources and on top of it there is someone else hitting query on the same db that leads to blockage
+
+For example - All the resources are in use and then someone else is trying to use them but since they are already in use the other one is unable to access them and that creates a block.
+
+It usually happens in case of bulk queries or queries running for a long time
+
+
+>so when blocked, we can remove that block?
+
+
+Yes we can if the app team approves
+In most cases that i have seen these blocks occur when someone is executing some sp.
+Sp uses multiple queries and on top of that someone else also hits queries on the same db
+Then due to the ongoing execution of that sp a block is created for the new query hit. 
+This also leads to performance issue in sp.
+In that case you need to kill the sessions causing blocks
+
+------Query for it is - kill sp_id
+
+
+
+>In Non prod, blocks happen less?
+
+Yeah comparatively less
+But they do happen all the time
+I guess yesterday or day before yesterday i resolved one issue of blocks on sp
+
+# One sp execution lead to 3 blocks
+
+So i had to kill all the sessions on that db
+In that case you need to kill the sessions causing blocks    Query for it is - kill sp_id
+
+
+>query to check blocks?
+
+
+Sp_whoisactive
+Sp_who2
+
+# Sp_whoisactive
+This will give you list of active sessions
+
+# Sp_who2
+This will give you list of all the sessions
+
+You can run any but its better to run the first one(SP_whoisactive)
+
+In the result you will get a column as blocking_id under that you can check which session is causing block.
+
+
+# Sp_whoisactive is not usually available in all the servers by default
+So you can create it if you want
+
+>how --like Sp_whoisactive is query na 
+>then why to create 
+
+It is a stored procedure
+It has to be created first so that you can execute it directly
+If you check the master database in any server there you will see a list of default SPs which you can directly execute.
+
+Sp_whoisactive is for us only for monitoring purpose 
+By default it is supposed to be there but it isnt so we can create it if we want no approval required
+You can take the script from any server where it already exists and create it
+
+
+>if we forgot any SP script, we can open any default Sps in master db and use ryt?
+
+# yes we can,
+But there are only a few SPs that we use from master db
+Sp_whoisactive is for us only for monitoring purpose By default it is supposed to be there but it isnt so we can create it if we want no approval required
+Dont make any changes unless necessary
+
+
+>>>  Sp_whoisactive
+
+this sp depends on other sps also, some hexadecimal sp is also there
+
+
+>>>>> query to check code of any Sp>  Sp_helptext SpName

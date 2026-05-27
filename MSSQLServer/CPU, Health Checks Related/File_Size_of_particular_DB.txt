@@ -1,0 +1,21 @@
+SELECT 
+    DB_NAME(database_id) AS DatabaseName,
+    name AS FileName,
+    size * 8 / 1024 AS SizeMB
+FROM 
+    sys.master_files
+WHERE 
+    database_id = DB_ID('CentralRepository');
+
+
+-------------Total Size-----------
+
+SELECT 
+    DB_NAME(database_id) AS DatabaseName,
+    name AS FileName,
+    size * 8 / 1024 AS SizeMB,
+    SUM(size * 8 / 1024) OVER (PARTITION BY database_id) AS TotalSizeMB
+FROM 
+    sys.master_files
+WHERE 
+    database_id = DB_ID('CentralRepository');

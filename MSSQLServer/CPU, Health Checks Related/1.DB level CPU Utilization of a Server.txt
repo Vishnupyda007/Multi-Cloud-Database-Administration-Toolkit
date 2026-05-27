@@ -1,0 +1,17 @@
+WITH DB_CPU_Stats AS
+(
+    SELECT
+        DB_Name(database_id) AS DatabaseName,
+        SUM(total_worker_time) AS TotalCPUTime
+    FROM sys.dm_exec_query_stats AS qs
+    CROSS APPLY (SELECT CONVERT(int, value) AS [database_id]
+                 FROM sys.dm_exec_plan_attributes(qs.plan_handle)
+                 WHERE attribute = N'dbid') AS F
+    GROUP BY DB_Name(database_id)
+)
+SELECT
+    DatabaseName,
+    TotalCPUTime,
+    CAST((TotalCPUTime * 1.0 / SUM(TotalCPUTime) OVER()) * 100 AS DECIMAL(5, 2)) AS [CPUUtilizationPercent]
+FROM DB_CPU_Stats
+ORDER BY CPUUtilizationPercent DESC;
