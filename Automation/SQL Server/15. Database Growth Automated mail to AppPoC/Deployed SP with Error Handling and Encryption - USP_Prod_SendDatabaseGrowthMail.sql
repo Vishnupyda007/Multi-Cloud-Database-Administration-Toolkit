@@ -1,0 +1,209 @@
+ALTER PROCEDURE USP_Prod_SendDatabaseGrowthMail
+---this includes Error Handling
+WITH ENCRYPTION
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Drop the temporary table if it already exists to ensure a clean run
+    IF OBJECT_ID('tempdb..#GrowthData') IS NOT NULL DROP TABLE #GrowthData;
+
+    -- CTE to get the latest database capacity data for the current month and year
+    WITH LatestMonthData AS (
+        SELECT *,
+            ROW_NUMBER() OVER (PARTITION BY ServerName, DBName, Name ORDER BY Datetime DESC) AS rn
+        FROM [MI_Prod_DB_Capacity_Report] WITH (NOLOCK)
+        WHERE YEAR(Datetime) = YEAR(GETDATE())
+            AND DATENAME(MONTH, Datetime) = DATENAME(MONTH, GETDATE())
+    )
+    -- Populate the #GrowthData temporary table with calculated growth metrics
+    SELECT
+        a.ServerName,
+        a.DBName AS DatabaseName,
+        ROUND(CAST(a.TotalDatabaseSizeGB AS FLOAT), 4) AS TotalDatabaseSizeGB,
+        ROUND(CAST(a.TotalDataFileSizeGB AS FLOAT), 4) AS TotalDataFileSizeGB,
+        -- Baseline data size from MI_Prod_DB_Capacity_Daily_STG
+        ROUND(CAST(b.TotalDataFileSizeGB AS FLOAT), 4) AS TotalDataFileSizeGB_Jan1,
+        -- Calculate the absolute change in data file size
+        ROUND(CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT), 4) AS TotalDataFileSizeChange,
+        ROUND(CAST(a.PercentageOfTotalGBUsed AS FLOAT), 4) AS PercentageOfTotalGBUsed,
+        -- Calculate the percentage change in data file size
+        ROUND(
+            CASE
+                WHEN ISNUMERIC(b.TotalDataFileSizeGB) = 1 AND CAST(b.TotalDataFileSizeGB AS FLOAT) <> 0
+                THEN ((CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT)) / CAST(b.TotalDataFileSizeGB AS FLOAT)) * 100
+                ELSE NULL
+            END, 2
+        ) AS TotalDataFileSizeGB_PercentChange,
+        FORMAT(a.Datetime, 'dd-MM-yyyy') AS FormattedDate,
+        -- Determine database size status (Increased, Decreased, No Change)
+        CASE
+            WHEN CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT) > 0 THEN 'Increased'
+            WHEN CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT) < 0 THEN 'Decreased'
+            ELSE 'No Change'
+        END AS DatabaseSizeStatus,
+        -- Assign a color for status display in HTML email
+        CASE
+            WHEN CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT) > 0 THEN 'red'
+            ELSE 'green'
+        END AS StatusColor
+    INTO #GrowthData
+    FROM
+        LatestMonthData a
+    JOIN
+        [MI_Prod_DB_Capacity_Daily_STG] b WITH (NOLOCK)
+    ON
+        a.DBName = b.DBName
+        AND a.ServerName = b.ServerName
+        AND a.Name = b.Name
+    WHERE
+        -- Current baseline is fixed to '2025-05-27'.
+        CAST(b.Datetime AS DATE) = '2025-05-27'
+        AND a.rn = 1 -- Ensure we only take the latest record for the current month
+        AND a.DBName NOT IN ('master','model','msdb','tempdb') -- Exclude system databases
+        AND (a.PercentageOfTotalGBUsed <> '' OR a.TotalDatabaseSizeGB <> ''); -- Ensure relevant columns are not empty
+
+    -- Declare variables for cursor and email details
+    DECLARE @AppPoC NVARCHAR(300);
+    DECLARE @EmailBody NVARCHAR(MAX);
+    DECLARE @AppName NVARCHAR(300);
+    DECLARE @Subject NVARCHAR(500);
+
+    -- Declare a cursor to iterate through distinct Application POCs and Application Names
+    -- associated with databases that have at least 0% growth (or more) in #GrowthData
+    DECLARE AppPoC_Cursor CURSOR FOR
+    SELECT DISTINCT ai.AppPoC, ai.ApplicationName
+    FROM #GrowthData gd
+    JOIN ApplicationInventory ai
+        ON gd.ServerName = ai.ServerName AND gd.DatabaseName = ai.DatabaseName
+    WHERE gd.TotalDataFileSizeGB_PercentChange > 10 and gd.TotalDatabaseSizeGB >= 100
+    ORDER BY ai.AppPoC;
+
+    OPEN AppPoC_Cursor;
+    FETCH NEXT FROM AppPoC_Cursor INTO @AppPoC, @AppName;
+
+    -- Loop through each unique AppPoC
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @Subject = 'Database Growth Alert for Application: ' + @AppName + ' || 1C Production';
+
+        -- Construct the HTML email body with embedded styles
+        SET @EmailBody =
+            N'<style>' +
+            N'table, th, td { ' +
+            N'border:1px solid black; ' +
+            N'border-collapse: collapse; ' +
+            N'font-family:Serif; ' +
+            N'text-align: center; ' +
+            N'padding: 3px; ' +
+            N'font-size: 10.5pt; ' +
+            N'} ' +
+            N'th { ' +
+            N'background:#87ceeb; ' +
+            N'} ' +
+            N'p,h5 { ' +
+            N'font-family:Serif; ' +
+            N'} ' +
+            N'</style>' +
+            '<p>Hi ' + @AppPoC + ',</p>' +
+            '<p>This notification is to inform you about significant database growth observed for your application: <strong>' + @AppName + '</strong> in our Production environment. The databases listed below have grown by 10% or more since the 27 May 2025 baseline. Your review of the provided details for potential data optimization and purging is highly appreciated:</p>' +
+            (
+                SELECT
+                    '<h5><font face="Lucida Bright" color="blue">Server Name: ' + gd.ServerName + '</font></h5>' +
+                    '<table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse: collapse;">' +
+                    '<tr style="background-color:#f2f2f2;"><th>DB Name</th><th>Total DB Size(GB)</th>' +
+                    '<th>Total DataFile Size(GB)</th><th>Baseline DataFile Size(GB)</th>' +
+                    '<th>DataFile Size Change(GB)</th><th>Total GB Used(in %)</th>' +
+                    '<th>Percent Change From Baseline</th><th>Growth Status</th><th>Data As Of Date</th></tr>' +
+                    (
+                        SELECT
+                            '<tr><td>' + ISNULL(gd.DatabaseName, 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.TotalDatabaseSizeGB AS NVARCHAR), 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.TotalDataFileSizeGB AS NVARCHAR), 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.TotalDataFileSizeGB_Jan1 AS NVARCHAR), 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.TotalDataFileSizeChange AS NVARCHAR), 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.PercentageOfTotalGBUsed AS NVARCHAR), 'N/A') + '</td><td>' +
+                            ISNULL(CAST(gd.TotalDataFileSizeGB_PercentChange AS NVARCHAR), 'N/A') + '%</td><td style="color:' +
+                            ISNULL(gd.StatusColor, 'black') + ';">' + ISNULL(gd.DatabaseSizeStatus, 'N/A') + '</td><td>' +
+                            ISNULL(gd.FormattedDate, 'N/A') + '</td></tr>'
+                        FROM #GrowthData gd
+                        JOIN ApplicationInventory ai
+                            ON gd.ServerName = ai.ServerName AND gd.DatabaseName = ai.DatabaseName
+                        WHERE
+                            ai.AppPoC = @AppPoC
+                            AND gd.TotalDataFileSizeGB_PercentChange > 10 and gd.TotalDatabaseSizeGB >= 100
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'NVARCHAR(MAX)') +
+                    '</table>'
+                    +
+                    (
+                        SELECT
+                            '<br/>' +
+                            '<h5><font face="Lucida Bright" color="blue">Top 10 Largest Tables in ' + gd.DatabaseName + ' on ' + gd.ServerName + ' :</font></h5>' +
+                            '<table border="1" cellpadding="5" cellspacing="0"; border-collapse: collapse;">' +
+                            '<tr style="background-color:#f2f2f2;"><th>Table Name</th><th>Total Rows</th><th>Table Size(GB)</th></tr>' +
+                            (
+                                SELECT top 10
+                                    '<tr><td>' + ISNULL(tt.TableName, 'N/A') + '</td><td>' +
+                                    ISNULL(CAST(tt.TotalRows AS NVARCHAR), 'N/A') + '</td><td>' +
+                                    ISNULL(CAST(tt.TableSizeGB AS NVARCHAR), 'N/A') + '</td></tr>'
+                                FROM [dbo].[Top_ten_tables_of_Each_Database_Prod_tbl] tt WITH (NOLOCK)
+                                WHERE
+                                    tt.DatabaseName = gd.DatabaseName
+                                    AND tt.ServerName = gd.ServerName
+                                    AND CAST(tt.CaptureDate AS DATE) = (SELECT MAX(CAST(CaptureDate AS DATE)) FROM [dbo].[Top_ten_tables_of_Each_Database_Prod_tbl] 
+                                    WHERE ServerName = tt.ServerName AND DatabaseName = tt.DatabaseName)
+                                ORDER BY tt.TableSizeGB DESC
+                                FOR XML PATH(''), TYPE
+                            ).value('.', 'NVARCHAR(MAX)') +
+                            '</table>'
+                        FROM #GrowthData gd_sub
+                        WHERE gd_sub.ServerName = gd.ServerName
+                          AND gd_sub.DatabaseName = gd.DatabaseName
+                          AND gd_sub.TotalDataFileSizeGB_PercentChange > 10 and gd_sub.TotalDatabaseSizeGB >= 100
+                        GROUP BY gd_sub.ServerName, gd_sub.DatabaseName, gd_sub.TotalDatabaseSizeGB
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'NVARCHAR(MAX)')
+                FROM #GrowthData gd
+                JOIN ApplicationInventory ai
+                    ON gd.ServerName = ai.ServerName AND gd.DatabaseName = ai.DatabaseName
+                WHERE
+                    ai.AppPoC = @AppPoC
+                    AND gd.TotalDataFileSizeGB_PercentChange > 10 and gd.TotalDatabaseSizeGB >= 100
+                GROUP BY gd.ServerName, gd.DatabaseName, gd.TotalDatabaseSizeGB
+                ORDER BY gd.ServerName, gd.DatabaseName
+                FOR XML PATH(''), TYPE
+            ).value('.', 'NVARCHAR(MAX)')
+            + '<br/><br/>'
+            + '<p style="font-family:Serif;"><b>Note:</b> This is an auto generated mail from 1C DBA Team, please reach to DL: <a href="mailto:CRSDBASUPPORT@cognizant.com">CRSDBASUPPORT@cognizant.com</a> for further steps/queries.</p>'
+            + '<br/><p style="font-family:Serif;">Thanks &amp; Regards,<br/><b>ITOps 1C DBA Team<b></p>';
+
+        -- Error handling: log email errors to a local table
+        IF @EmailBody IS NOT NULL AND LTRIM(RTRIM(@EmailBody)) <> ''
+        BEGIN
+            BEGIN TRY
+                EXEC msdb.dbo.sp_send_dbmail
+                    @profile_name = 'ITOps1CDBA',
+                    @recipients = @AppPoC,
+                    @copy_recipients='kirankumar.gannavaram@cognizant.com;ashwathi.k@cognizant.com;balakrishna.mannepalli@cognizant.com;vijaianand.pv@cognizant.com;2275509@cognizant.com',
+                    @subject = @Subject,
+                    @body = @EmailBody,
+                    @body_format = 'HTML';
+            END TRY
+            BEGIN CATCH
+                INSERT INTO dbo.AppPoCEmailErrorLog (AppPoC, AppName, ErrorMessage, ErrorDateTime)
+                VALUES (@AppPoC, @AppName, ERROR_MESSAGE(), GETDATE());
+            END CATCH
+        END
+
+        FETCH NEXT FROM AppPoC_Cursor INTO @AppPoC, @AppName
+    END;
+
+    select * from #GrowthData where TotalDataFileSizeGB_PercentChange > 10 and TotalDatabaseSizeGB >= 100 
+
+    CLOSE AppPoC_Cursor;
+    DEALLOCATE AppPoC_Cursor;
+
+    DROP TABLE #GrowthData;
+END;
+GO
