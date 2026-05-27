@@ -1,0 +1,38 @@
+CREATE ROLE gguser_repedspgsql_nonprod WITH
+	LOGIN
+	NOSUPERUSER
+	NOCREATEDB
+	NOCREATEROLE
+	INHERIT
+	NOREPLICATION
+	NOBYPASSRLS
+	CONNECTION LIMIT -1
+	PASSWORD 'F(JHyOEF[%s4';
+
+GRANT gguser_repedspgsql_nonprod TO postgres WITH ADMIN OPTION;
+
+--grant db_owner to gguser_repedspgsql_nonprod;
+
+
+--CONNECT,USAGE ON SCHEMA,SELECT ON TABLES,SELECT,INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA,CREATE ON DATABASE,CREATE, USAGE ON SCHEMA,EXECUTE ON ALL FUNCTIONS,SELECT, INSERT, UPDATE, DELETE
+grant all on database ent_data_store to gguser_repedspgsql_nonprod;
+grant all on schema public to gguser_repedspgsql_nonprod;
+ALTER DEFAULT PRIVILEGES  IN SCHEMA public
+GRANT DELETE, INSERT, SELECT, TRUNCATE, UPDATE ON TABLES TO gguser_repedspgsql_nonprod;
+
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT ALL ON SEQUENCES TO gguser_repedspgsql_nonprod;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT EXECUTE ON FUNCTIONS TO gguser_repedspgsql_nonprod;
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
+GRANT EXECUTE ON FUNCTIONS TO gguser_repedspgsql_nonprod;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
+GRANT DELETE, INSERT, SELECT, TRUNCATE, UPDATE ON TABLES TO gguser_repedspgsql_nonprod;
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
+GRANT ALL ON SEQUENCES TO gguser_repedspgsql_nonprod;

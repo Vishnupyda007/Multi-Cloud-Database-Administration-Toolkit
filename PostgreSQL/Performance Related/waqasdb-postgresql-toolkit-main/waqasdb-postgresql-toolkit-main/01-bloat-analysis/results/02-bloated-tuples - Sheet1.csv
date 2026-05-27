@@ -1,0 +1,13 @@
+measurement,data_size,index_size,total_size,,,,,
+AFTER BLOAT,1693 MB,214 MB,1908 MB,,,,,
+,,,,,,,,
+,,,,,,,,
+relname,live_rows,dead_rows,dead_pct,last_autovacuum,autovacuum_count,,,
+user_sessions,5000014,5000000,100,2026-02-21 15:28:33.311593+05,1,,,
+,,,,,,,,
+,,,,,,,,
+table_len,tuple_count,tuple_len,tuple_percent,dead_tuple_count,dead_tuple_len,dead_tuple_percent,free_space,free_percent
+1775116288,5000000,816922160,46.02,122850,20072282,1.13,857077312,48.28
+,,,,,,,,
+current_size,optimal_size,bloat_ratio,wasted_space,free_space_size,dead_space_size,,,
+1693 MB,779 MB,2.17,914 MB,817 MB,19 MB,,,

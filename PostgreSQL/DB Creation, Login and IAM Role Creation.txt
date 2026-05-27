@@ -1,0 +1,59 @@
+--- DB Creation-------
+
+CREATE DATABASE my_database
+  WITH TEMPLATE = template1;
+
+
+---Once new DB is created, we have to remove public Access:
+
+REVOKE ALL ON DATABASE DBName FROM PUBLIC;
+
+----Login Creation----
+
+--To create IAM Role
+create role "csagenticaiapp-scd-4653-np-sa@cb0104074a-citnonprod-gc.iam" with login;
+
+
+
+> Login with password creation:
+create role EDS_ETL_test with login password 'Edstest@2025';
+
+> if uppercase is required:
+create role "EDS_ETL_test" with login password 'Edstest@2025';
+
+
+
+---------Once Login is created, we have to deny public Access for the newly created login for all the DBs:
+
+DO $$
+DECLARE
+  r RECORD;
+  target_role CONSTANT TEXT := 'test_user1'; --provide the user/role name
+BEGIN
+  FOR r IN
+    SELECT datname
+    FROM pg_database
+    WHERE datistemplate = false
+      AND datname not in ('cloudsqladmin') --excluding the system databases
+  LOOP
+    RAISE NOTICE 'Revoking CONNECT on database % from role %', r.datname, target_role;
+    EXECUTE format('REVOKE CONNECT ON DATABASE %I FROM %I;', r.datname, target_role);
+  END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+--------To provide Access for the login/IAM role to their App DB:
+
+grant connect on database DBName to User_Name;
+
+grant temporary on database DBName to User_Name; -- this is required for temp tables usage.
+
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres
+GRANT DELETE, INSERT, delete, SELECT, TRUNCATE, UPDATE ON TABLES TO "test_ToolCreation";
+
+
+> IAM Role:
+grant connect on database DBName to "csagenticaiapp-scd-4653-np-sa@cb0104074a-citnonprod-gc.iam";

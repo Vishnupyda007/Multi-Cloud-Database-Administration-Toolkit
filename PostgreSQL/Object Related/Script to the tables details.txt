@@ -1,0 +1,76 @@
+```sql
+SELECT 
+    t.table_name,
+    c.column_name,
+    c.data_type,
+    c.character_maximum_length,
+    c.is_nullable,
+    c.ordinal_position
+FROM 
+    information_schema.tables t
+JOIN 
+    information_schema.columns c 
+    ON t.table_name = c.table_name 
+    AND t.table_schema = c.table_schema
+WHERE 
+    t.table_schema = 'public'
+    AND t.table_type = 'BASE TABLE'
+ORDER BY 
+    t.table_name, 
+    c.ordinal_position;
+```
+
+---
+
+If you only need **table name and column name**:
+
+```sql
+SELECT 
+    table_name,
+    column_name
+FROM 
+    information_schema.columns
+WHERE 
+    table_schema = 'public'
+ORDER BY 
+    table_name, 
+    ordinal_position;
+```
+
+---
+
+If you want to **search for a specific column name** across all tables:
+
+```sql
+SELECT 
+    table_name,
+    column_name,
+    data_type
+FROM 
+    information_schema.columns
+WHERE 
+    table_schema = 'public'
+    AND column_name ILIKE '%your_column_name%'  -- replace with your search term
+ORDER BY 
+    table_name;
+
+
+
+---------------------------------without google db views-----
+
+
+SELECT 
+    table_name,
+    column_name
+FROM 
+    information_schema.columns
+WHERE 
+    table_schema = 'public' and table_name not like '%google_db_%' and table_name not like 'hypopg_list_indexes'
+ORDER BY 
+    table_name, 
+    ordinal_position;
+
+
+```
+
+> **Note:** Change `'public'` to your schema name if your tables are in a different schema. `ILIKE` is case-insensitive search.

@@ -1,0 +1,29 @@
+Step-1: Create Database by default Owner
+
+Syntax: Create database DB_Name with template=template1;
+
+
+
+Step-2: revoke public Access:
+
+revoke all on database DB_name from public;
+
+
+Step-3: Now grant Access to DBReaderTool Role:
+
+grant connect on database DB_name to "DBReaderTool" with grant option;
+grant create on database DB_name to "DBReaderTool";
+
+grant create on schema public to "DBReaderTool";
+
+> Once you create any test table, DBReaderTool becomes onwer, and ReaderTool can do write on the table.
+
+
+
+Step-4: Now you can follow Access provisions to user.
+
+
+Step-5: Tranfer the DB OwnerShip to Postgres User
+
+
+Alter Database DB_name owner to postgres;

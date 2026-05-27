@@ -1,0 +1,16 @@
+stage,data_size,index_size,total_size,
+BEFORE VACUUM FULL,1693 MB,214 MB,1908 MB,
+,,,,
+,,,,
+stage,data_size,index_size,total_size,
+AFTER VACUUM FULL,847 MB,107 MB,954 MB,
+,,,,
+live_tuples,dead_tuples,live_pct,dead_pct,free_pct
+5000000,0,92,0,1.51
+,,,,
+,,,,
+measurement,data_size,index_size,total_size,
+FINAL STATE,847 MB,107 MB,954 MB,
+,,,,
+page_health,pages,pct_of_table,,
+1-FULL: Fully Packed,108392,100,,
