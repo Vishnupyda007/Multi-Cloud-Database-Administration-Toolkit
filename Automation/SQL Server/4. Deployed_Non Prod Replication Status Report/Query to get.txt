@@ -1,0 +1,7 @@
+USE [DBAdmin] 
+IF OBJECT_ID('dbo.Non_Prod_Replication_Status_Report','U') IS NOT NULL
+DELETE FROM dbo.Non_Prod_Replication_Status_Report where publisher='CTSC01048405301\CRSUAT'
+WAITFOR DELAY '00:00:00'
+EXEC distribution.sys.sp_replmonitorhelpsubscription @publication_type=0
+INSERT DBAdmin.dbo.Non_Prod_Replication_Status_Report
+EXEC distribution.sys.sp_replmonitorhelpsubscription @publication_type = 0

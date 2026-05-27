@@ -1,0 +1,164 @@
+
+USE [1CDBAMonitoring];
+GO
+
+ ALTER VIEW dbo.vw_MI_Prod_DB_Growth_WithHeaders
+AS
+
+WITH LatestMonthData AS
+(
+    SELECT
+        r.ServerName,
+        r.DBName,
+        r.Name,
+        r.TotalDatabaseSizeGB,
+        r.TotalDataFileSizeGB,
+        r.PercentageOfTotalGBUsed,
+        r.[Datetime],
+        ROW_NUMBER() OVER
+        (
+            PARTITION BY r.ServerName, r.DBName, r.Name
+            ORDER BY r.[Datetime] DESC
+        ) AS rn
+    FROM dbo.MI_Prod_DB_Capacity_Report r WITH (NOLOCK)
+    WHERE YEAR(r.[Datetime]) = YEAR(GETDATE())
+      AND MONTH(r.[Datetime]) = MONTH(GETDATE())
+),
+BaselineData AS
+(
+    SELECT
+        b.ServerName,
+        b.DBName,
+        b.Name,
+        b.TotalDataFileSizeGB AS Baseline_TotalDataFileSizeGB,
+        CAST(b.[Datetime] AS date) AS BaselineDate
+    FROM dbo.MI_Prod_DB_Capacity_Daily_STG b WITH (NOLOCK)
+    WHERE CAST(b.[Datetime] AS date) = '2025-05-27'   -- fixed baseline for view
+),
+Final AS
+(
+    SELECT
+        a.ServerName,
+        a.DBName AS DatabaseName,
+        a.Name,
+        a.[Datetime] AS SnapshotDateTime,
+
+        TRY_CONVERT(float, a.TotalDatabaseSizeGB)           AS TotalDatabaseSizeGB_F,
+        TRY_CONVERT(float, a.TotalDataFileSizeGB)           AS TotalDataFileSizeGB_F,
+        TRY_CONVERT(float, b.Baseline_TotalDataFileSizeGB)  AS BaselineDataFileSizeGB_F,
+        TRY_CONVERT(float, a.PercentageOfTotalGBUsed)       AS PercentageOfTotalGBUsed_F,
+
+        b.BaselineDate
+    FROM LatestMonthData a
+    LEFT JOIN BaselineData b
+        ON  a.ServerName = b.ServerName
+        AND a.DBName     = b.DBName
+        AND a.Name       = b.Name
+    WHERE a.rn = 1
+      AND a.DBName NOT IN ('master','model','msdb','tempdb')
+      AND (a.PercentageOfTotalGBUsed <> '' OR a.TotalDatabaseSizeGB <> '')
+)
+
+-- 1) Header Row
+SELECT
+    'Server Name'                    AS [Server Name],
+    'Database Name'                  AS [Database Name],
+    --'Object / Name'                  AS [Object / Name],
+    'Total DB Size (GB)'             AS [Total DB Size (GB)],
+    'Total Data File Size (GB)'      AS [Total Data File Size (GB)],
+    'Baseline Data File Size (GB)'   AS [Baseline Data File Size (GB)],
+    'Baseline Date'                  AS [Baseline Date],
+    'Data File Size Change (GB)'     AS [Data File Size Change (GB)],
+    'Percent Used (%)'               AS [Percent Used (%)],
+    'Data File Growth %'             AS [Data File Growth %],
+    'Snapshot Date'                  AS [Snapshot Date],
+    'Growth Status'                  AS [Growth Status],
+    'Status Color'                   AS [Status Color],
+    'Growth % Display'               AS [Growth % Display],
+    'Growth Summary'                 AS [Growth Summary]
+
+UNION ALL
+
+-- 2) Data Rows (cast to varchar to match header row types)
+SELECT
+    CAST(ServerName AS varchar(200)) AS [Server Name],
+    CAST(DatabaseName AS varchar(200)) AS [Database Name],
+    --CAST(Name AS varchar(200)) AS [Object / Name],
+
+    CAST(ROUND(TotalDatabaseSizeGB_F, 4) AS varchar(50)) AS [Total DB Size (GB)],
+    CAST(ROUND(TotalDataFileSizeGB_F, 4) AS varchar(50)) AS [Total Data File Size (GB)],
+    CAST(ROUND(BaselineDataFileSizeGB_F, 4) AS varchar(50)) AS [Baseline Data File Size (GB)],
+
+    CAST(CONVERT(varchar(10), BaselineDate, 120) AS varchar(50)) AS [Baseline Date],
+
+    CAST(ROUND(TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F, 4) AS varchar(50)) AS [Data File Size Change (GB)],
+
+    CAST(ROUND(PercentageOfTotalGBUsed_F, 4) AS varchar(50)) AS [Percent Used (%)],
+
+    CAST(
+        ROUND(
+            ((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+             / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0
+        , 2) AS varchar(50)
+    ) AS [Data File Growth %],
+
+    CAST(FORMAT(SnapshotDateTime, 'dd-MM-yyyy') AS varchar(30)) AS [Snapshot Date],
+
+    CAST(
+        CASE
+            WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN 'Increased'
+            WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) < 0 THEN 'Decreased'
+            ELSE 'No Change'
+        END AS varchar(30)
+    ) AS [Growth Status],
+
+    CAST(
+        CASE
+            WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN 'red'
+            ELSE 'green'
+        END AS varchar(10)
+    ) AS [Status Color],
+
+    CAST(
+        CASE
+            WHEN BaselineDataFileSizeGB_F IS NULL OR TotalDataFileSizeGB_F IS NULL THEN 'N/A'
+            WHEN BaselineDataFileSizeGB_F = 0 AND TotalDataFileSizeGB_F > 0 THEN 'New'
+            WHEN BaselineDataFileSizeGB_F = 0 AND TotalDataFileSizeGB_F = 0 THEN '0.00%'
+            ELSE CONCAT(
+                CASE WHEN (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                           / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0) > 0
+                     THEN '+' ELSE '' END,
+                FORMAT(
+                    (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                      / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0),
+                    'N2'
+                ),
+                '%'
+            )
+        END AS varchar(50)
+    ) AS [Growth % Display],
+
+    CAST(
+        CONCAT(
+            CASE WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN '+' ELSE '' END,
+            FORMAT(ROUND(TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F, 2), 'N2'),
+            ' GB (',
+            CASE
+                WHEN BaselineDataFileSizeGB_F IS NULL OR BaselineDataFileSizeGB_F = 0 THEN 'N/A'
+                ELSE CONCAT(
+                    CASE WHEN (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                               / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0) > 0
+                         THEN '+' ELSE '' END,
+                    FORMAT(
+                        ROUND((((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                              / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0), 2),
+                        'N2'
+                    ),
+                    '%'
+                )
+            END,
+            ')'
+        ) AS varchar(200)
+    ) AS [Growth Summary]
+FROM Final;
+GO

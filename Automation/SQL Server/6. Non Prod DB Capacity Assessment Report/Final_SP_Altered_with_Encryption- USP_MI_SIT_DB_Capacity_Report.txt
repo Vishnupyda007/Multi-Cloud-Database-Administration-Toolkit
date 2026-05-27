@@ -1,0 +1,174 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_MI_SIT_DB_Capacity_Report]    Script Date: 2/11/2025 10:33:15 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ 
+/****** Object:  StoredProcedure [dbo].[USP_MI_SIT_DB_Capacity_Report]        
+--SET ANSI_NULLS ON        
+--GO        
+--SET QUOTED_IDENTIFIER ON        
+--GO        
+-- =============================================        
+-- Author:  <Hima Vishnu P>        
+-- Create date: <3:30PM,08 Feb,2025>        
+-- Description: <Description,,>       
+--- EXEC USP_MI_SIT_DB_Capacity_Report   
+------ ============================================= ***/    
+CREATE PROCEDURE [dbo].[USP_MI_SIT_DB_Capacity_Report] with encryption
+AS
+BEGIN
+    CREATE TABLE #temp(
+        ServerName NVARCHAR(128),
+        DBName NVARCHAR(128),
+        [Name] NVARCHAR(128),
+        FileId INT,
+        TotalSizeGB DECIMAL(18,3),
+        AvailableSpaceGB DECIMAL(18,3),
+        UsedSpaceGB DECIMAL(18,3),
+        PercentageUsed DECIMAL(5,2),
+        TotalDatabaseSizeGB NVARCHAR(50),
+        PercentageOfTotalGBUsed NVARCHAR(10)
+    );  
+    
+    INSERT INTO #temp 
+    SELECT DISTINCT
+        ServerName,
+        DBName,
+        [Name],
+        FileId,
+        TotalSizeGB,
+        AvailableSpaceGB,
+        UsedSpaceGB,
+        PercentageUsed,
+        TotalDatabaseSizeGB,
+        PercentageOfTotalGBUsed  
+    FROM (
+        SELECT 
+            ServerName,
+            DBName,
+            [Name],
+            FileId,
+            TotalSizeGB,
+            AvailableSpaceGB,
+            UsedSpaceGB,
+            PercentageUsed,
+            TotalDatabaseSizeGB,
+            PercentageOfTotalGBUsed,
+            ROW_NUMBER() OVER (PARTITION BY ServerName, DBName, [Name], FileId ORDER BY (SELECT NULL)) AS RowNum
+        FROM MI_SIT_DB_Capacity_Report with(nolock)
+    ) AS sub
+    WHERE RowNum = 1;
+   
+    DECLARE @body_HTML NVARCHAR(MAX) = N'';  
+    DECLARE @hasData BIT = 0;  
+  
+    -- Function to generate HTML for a specific server
+    DECLARE @server NVARCHAR(128);
+    DECLARE @serverName NVARCHAR(128);
+    DECLARE server_cursor CURSOR FOR
+    SELECT DISTINCT ServerName FROM #temp;
+
+    OPEN server_cursor;
+    FETCH NEXT FROM server_cursor INTO @server;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @serverName = CASE 
+            WHEN @server = 'ctsazsimisitde1.inso13dfbbbfa2150.database.windows.net' THEN 'SITDE1'
+            WHEN @server = 'ctsazsimisstfd1.inso13dfbbbfa2150.database.windows.net' THEN 'SSTFD1'
+            WHEN @server = 'ctsazsimisgntm1.inso13dfbbbfa2150.database.windows.net' THEN 'SGNTM1'
+            WHEN @server = 'ctsazsimisplt01.inso13dfbbbfa2150.database.windows.net' THEN 'SPLT01'
+            WHEN @server = 'ctsazsimisnc02.inso13dfbbbfa2150.database.windows.net' THEN 'SNC02'
+            when @server = 'ctsinazqaedssqlmi.inso13dfbbbfa2150.database.windows.net' THEN 'EDS QA'
+        END;
+
+        IF EXISTS (SELECT 1 FROM #temp WHERE ServerName = @server)
+        BEGIN
+            SET @hasData = 1;  
+            SET @body_HTML = @body_HTML +     
+            N'<H2 align="Left"><font face="Lucida Bright" color="blue" size="2.5">' + @serverName + ' DB Capacity Status:</font></H2>
+            <table id="tablaPrincipal">    
+            <tr>                       
+            <th>Database Name</th>
+            <th>File Name</th>
+            <th>Total file Size(GB)</th>
+            <th>Available Space(GB)</th>
+            <th>Used Space(GB)</th>
+            <th>Percentage of Used(%)</th>
+            <th>Database Total Size(GB)</th>
+            <th>Percentage of Total Used(%)</th>
+            </tr>';                
+
+            SELECT @body_HTML = @body_HTML + 
+            '<tr style="color:' + CASE WHEN PercentageOfTotalGBUsed >= '95%' THEN 'red' ELSE 'black' END + ';">
+            <td>' + DBName + '</td>
+            <td>' + [Name] + '</td> 
+            <td>' + CAST(TotalSizeGB AS NVARCHAR) + '</td> 
+            <td>' + CAST(AvailableSpaceGB AS NVARCHAR) + '</td>
+            <td>' + CAST(UsedSpaceGB AS NVARCHAR) + '</td>
+            <td>' + CAST(PercentageUsed AS NVARCHAR) + '</td> 
+            <td>' + TotalDatabaseSizeGB + '</td> 
+            <td>' + PercentageOfTotalGBUsed + '</td> 
+            </tr>'  
+            FROM #temp WITH (NOLOCK) 
+            WHERE ServerName = @server ORDER BY DBName, FileId ASC;
+
+            SET @body_HTML = @body_HTML + '</table><br><br>';
+        END;
+
+        FETCH NEXT FROM server_cursor INTO @server;
+    END;
+
+    CLOSE server_cursor;
+    DEALLOCATE server_cursor;
+
+    IF @hasData = 1  
+    BEGIN  
+        SET @body_HTML =     
+        N'<p>       
+        Hi ITOps 1C DBA Team,    
+        <br>Please find the below MI SIT Servers BI Weekly DB Capacity Report.<br>
+		<br>Note: Databases highlighted in red are Percentage of total GB Used of a Database >=95%.<br>
+        <br> <br>      
+        </p>' +  
+        N'<style>
+            table, th, td {    
+            border:1px solid black;    
+            border-collapse: collapse;    
+            font-family:Serif;   
+            text-align: center;
+            padding: 3px;
+            font-size: 10.2pt;
+            }    
+            th {
+            background:#87ceeb;
+            }
+			p {
+			font-family:Serif;
+			}
+        </style>' + @body_HTML;  
+  
+        EXEC msdb.dbo.sp_send_dbmail     
+        @profile_name = 'CRS',    
+        @body         = @body_HTML,    
+        @body_format  = 'HTML',    
+        @recipients ='RaviShankar.C@cognizant.com;Janani.M2dcbb3@cognizant.com;Badam.Navya@cognizant.com; Bindu.Raavi@cognizant.com;pradheep.kumartk@cognizant.com; megha.singhal@cognizant.com;
+		Sneha.S5@cognizant.com;Vimalraj.S3@cognizant.com;vidya.erragopula@cognizant.com;
+		Burra.Sandhya@cognizant.com;PydaVenkata.SrihimaVishnuSeshasai@cognizant.com;EDMDBA@cognizant.com',
+        @copy_recipients='kirankumar.gannavaram@cognizant.com;ashwathi.k@cognizant.com;
+		   balakrishna.mannepalli@cognizant.com;vijaianand.pv@cognizant.com',  
+        @subject = 'Daily MI SIT DB Capacity Report';    
+		 
+    END;  
+  
+    DROP TABLE #temp;  
+END    
+GO
+
+

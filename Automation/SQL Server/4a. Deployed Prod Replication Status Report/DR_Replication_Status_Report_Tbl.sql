@@ -1,0 +1,47 @@
+USE [1CDBAMonitoring]
+GO
+
+/****** Object:  Table [dbo].[DR_Replication_Status_Report_Tbl]    Script Date: 5/12/2025 8:35:57 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[DR_Replication_Status_Report_Tbl](
+	[status] [int] NULL,
+	[warning] [int] NULL,
+	[subscriber] [sysname] NOT NULL,
+	[subscriber_db] [sysname] NOT NULL,
+	[publisher_db] [sysname] NOT NULL,
+	[publication] [sysname] NOT NULL,
+	[publication_type] [int] NULL,
+	[subtype] [int] NULL,
+	[latency] [int] NULL,
+	[latencythreshold] [int] NULL,
+	[agentnotrunning] [int] NULL,
+	[agentnotrunningthreshold] [int] NULL,
+	[timetoexpiration] [int] NULL,
+	[expirationthreshold] [int] NULL,
+	[last_distsync] [datetime] NULL,
+	[distribution_agentname] [sysname] NOT NULL,
+	[mergeagentname] [sysname] NULL,
+	[mergesubscriptionfriendlyname] [sysname] NULL,
+	[mergeagentlocation] [sysname] NULL,
+	[mergeconnectiontype] [sysname] NULL,
+	[mergePerformance] [sysname] NULL,
+	[mergerunspeed] [sysname] NULL,
+	[mergerunduration] [sysname] NULL,
+	[monitorranking] [int] NULL,
+	[distributionagentjobid] [sysname] NULL,
+	[mergeagentjobid] [int] NULL,
+	[distributionagentid] [int] NULL,
+	[distributionagentprofileid] [int] NULL,
+	[mergeagentid] [int] NULL,
+	[mergeagentprofileid] [int] NULL,
+	[logreaderagentname] [sysname] NULL,
+	[publisher] [sysname] NULL
+) ON [PRIMARY]
+GO
+
+

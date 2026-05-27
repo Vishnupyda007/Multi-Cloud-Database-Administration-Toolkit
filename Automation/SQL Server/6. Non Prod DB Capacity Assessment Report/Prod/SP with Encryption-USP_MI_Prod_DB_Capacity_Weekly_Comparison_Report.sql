@@ -1,0 +1,209 @@
+USE [1CDBAMonitoring]
+GO
+
+/****** Object:  StoredProcedure [dbo].[USP_MI_Prod_DB_Capacity_Weekly_Comparison_Report]    Script Date: 2/11/2025 10:33:15 AM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ 
+/****** Object:  StoredProcedure [dbo].[USP_MI_Prod_DB_Capacity_Weekly_Comparison_Report]        
+--SET ANSI_NULLS ON        
+--GO        
+--SET QUOTED_IDENTIFIER ON        
+--GO        
+-- =============================================        
+-- Author:  <Hima Vishnu P>        
+-- Create date: <7:30PM,27 May,2025>        
+-- Description: <Description,,>       
+--- EXEC [USP_MI_Prod_DB_Capacity_Weekly_Comparison_Report]   
+------ ============================================= ***/  
+ALTER PROCEDURE [dbo].[USP_MI_Prod_DB_Capacity_Weekly_Comparison_Report] with encryption
+AS
+BEGIN
+    CREATE TABLE #temp_Prod_DB_Weekly_Comparison (
+        ServerName NVARCHAR(128),
+        DBName NVARCHAR(128),
+        FileId INT,
+        TotalDatabaseSizeGB NVARCHAR(50),
+        TotalDataFileSizeGB NVARCHAR(50),
+	TotalDataFileSizeGB_OneWeekAgo NVARCHAR(50),
+        TotalDataFileSizeChange NVARCHAR(50),
+        PercentageOfTotalGBUsed NVARCHAR(10),
+        TotalDataFileSizeGB_PercentChange NVARCHAR(10),
+        FormattedDate NVARCHAR(100),
+        DatabaseSizeStatus NVARCHAR(50) -- New column
+    );  
+    
+    INSERT INTO #temp_Prod_DB_Weekly_Comparison 
+    SELECT DISTINCT
+        ServerName,
+        DBName,
+        FileId,
+        TotalDatabaseSizeGB,
+		TotalDataFileSizeGB,
+        TotalDataFileSizeGB_OneWeekAgo,
+        TotalDataFileSizeChange,
+        PercentageOfTotalGBUsed,
+        TotalDataFileSizeGB_PercentChange,
+        FormattedDate,
+        CASE 
+            WHEN CAST(TotalDataFileSizeChange AS FLOAT) > 0 THEN 'Increased'
+            WHEN CAST(TotalDataFileSizeChange AS FLOAT) < 0 THEN 'Decreased'
+            ELSE 'No Change'
+        END AS DatabaseSizeStatus -- Logic for new column
+    FROM (
+SELECT 
+    a.ServerName,
+    a.DBName,
+    a.FileId,
+    ROUND(CAST(a.TotalDatabaseSizeGB AS FLOAT), 4) AS TotalDatabaseSizeGB,
+    ROUND(CAST(a.TotalDataFileSizeGB AS FLOAT), 4) AS TotalDataFileSizeGB,
+    ROUND(CAST(b.TotalDataFileSizeGB AS FLOAT), 4) AS TotalDataFileSizeGB_OneWeekAgo,
+    FORMAT(ROUND(CAST(a.TotalDataFileSizeGB AS FLOAT), 4) - ROUND(CAST(b.TotalDataFileSizeGB AS FLOAT), 4), 'N4') AS TotalDataFileSizeChange,
+    ROUND(CAST(a.PercentageOfTotalGBUsed AS FLOAT), 4) AS PercentageOfTotalGBUsed,
+   FORMAT(
+    CASE 
+        WHEN ISNUMERIC(b.TotalDataFileSizeGB) = 1 AND CAST(b.TotalDataFileSizeGB AS FLOAT) <> 0 
+        THEN ((CAST(a.TotalDataFileSizeGB AS FLOAT) - CAST(b.TotalDataFileSizeGB AS FLOAT)) / CAST(b.TotalDataFileSizeGB AS FLOAT)) * 100 
+        ELSE NULL 
+    END, 'N2'
+) AS TotalDataFileSizeGB_PercentChange,
+    FORMAT(a.Datetime, 'dd-MM-yyyy') AS FormattedDate,
+    ROW_NUMBER() OVER (PARTITION BY a.ServerName, a.DBName, a.FileId ORDER BY (SELECT NULL)) AS RowNum
+FROM 
+    [MI_Prod_DB_Capacity_Report] a WITH (NOLOCK)
+LEFT JOIN 
+    (SELECT 
+        ServerName, DBName, Name, TotalDataFileSizeGB, PercentageOfTotalGBUsed, Datetime
+     FROM 
+        [MI_Prod_DB_Capacity_Daily_STG] WITH (NOLOCK)
+     WHERE 
+        CAST(Datetime AS DATE) = DATEADD(DAY, -14, CAST(GETDATE() AS DATE))
+    ) b
+ON 
+    a.DBName = b.DBName 
+    AND a.ServerName = b.ServerName 
+    AND a.Name = b.Name
+WHERE 
+    (a.PercentageOfTotalGBUsed <> '' OR a.TotalDatabaseSizeGB <> '')
+    AND a.Datetime >= CAST(GETDATE() AS DATE)
+    AND a.DBName NOT IN ('master','model','msdb','tempdb')
+    ) AS sub 
+    WHERE RowNum = 1;
+
+    -- Debug print to check data in the temporary table
+    SELECT * FROM #temp_Prod_DB_Weekly_Comparison;
+
+    DECLARE @body_HTML NVARCHAR(MAX) = N'';  
+    DECLARE @hasData BIT = 0;  
+
+    -- Generate HTML content for all servers
+    WITH ServerData AS (
+        SELECT DISTINCT ServerName,
+            CASE 
+            WHEN ServerName = 'ctsazsimibcapps1.inso1a101c37461fa.database.windows.net' THEN 'BCApps1'
+            WHEN ServerName = 'ctsazsimibcapps2.inso1a101c37461fa.database.windows.net' THEN 'BCApps2'
+            WHEN ServerName = 'ctsazmibcapps3.293366d454bb.database.windows.net' THEN 'BCApps3'
+            WHEN ServerName = 'ctsazsimipddeapps1.293366d454bb.database.windows.net' THEN 'DEApps1'
+            WHEN ServerName = 'ctsazsimipfd.inso1a101c37461fa.database.windows.net' THEN 'PFD'
+            when ServerName = 'ctsazsimipplt.inso1a101c37461fa.database.windows.net' THEN 'PPLT'
+            WHEN ServerName = 'ctsazsimimcapps1.293366d454bb.database.windows.net' THEN 'MCApps1'
+            when ServerName = 'ctsazsimipst.inso1a101c37461fa.database.windows.net' THEN 'PST'
+            WHEN ServerName = 'ctsazsimipgn.inso1a101c37461fa.database.windows.net' THEN 'PGN'
+            when ServerName = 'ctsazsimiptm.inso1a101c37461fa.database.windows.net' THEN 'PTM'
+            WHEN ServerName = 'ctsazsimiptm1.293366d454bb.database.windows.net' THEN 'PTM1'
+            when ServerName = 'ctsazpdmincapps1.b96303a221dc.database.windows.net' THEN 'NCApps1'
+            WHEN ServerName = 'ctsazpdmincapps2.b96303a221dc.database.windows.net' THEN 'NCApps2'
+            when ServerName = 'ctsazmipdpcrsr1.inso1a101c37461fa.database.windows.net' THEN 'R1 Cloud'
+			when ServerName = 'ctsazsimiprdml01.293366d454bb.database.windows.net' THEN 'PRML01'
+            ELSE 'Unknown'
+            END AS ServerDisplayName
+        FROM #temp_Prod_DB_Weekly_Comparison
+    )
+    SELECT @body_HTML = @body_HTML + 
+        N'<H2 align="Left"><font face="Lucida Bright" color="blue" size="2.5">' + ServerDisplayName + ' DB Capacity Status:</font></H2>
+        <table id="tablaPrincipal">    
+        <tr>                       
+        <th>Database Name</th>
+        <th>Database Total Size(GB)</th>
+        <th>Database Total DataFile SizeGB</th>
+        <th>Database Total DataFile SizeGB(TwoWeeksAgo)</th>
+	<th>Total Data File Size Change(GB)</th>
+        <th>Percentage of Total Used(%)</th>
+        <th>DataFile Growth/De-Growth(%)</th>
+        <th>Database Size Status</th> <!-- New column header -->
+		<th>Date</th>
+        </tr>' +
+        (SELECT STUFF((
+            SELECT
+              '<tr>
+                <td>' + DBName + '</td>  
+                <td>' + TotalDatabaseSizeGB + '</td> 
+                <td>' + TotalDataFileSizeGB + '</td>
+		<td>' + TotalDataFileSizeGB_OneWeekAgo + '</td>
+		<td>' + TotalDataFileSizeChange + '</td>
+                <td>' + PercentageOfTotalGBUsed + '</td> 
+                <td>' + TotalDataFileSizeGB_PercentChange + '</td> 
+                <td style="color:' + CASE WHEN CAST(TotalDataFileSizeChange AS FLOAT) > 0 THEN 'red' ELSE 'green' END + ';">' + DatabaseSizeStatus + '</td> <!-- New column data with color formatting -->
+				<td>' + CAST(FormattedDate AS nvarchar) + '</td> 
+                </tr>'
+            FROM #temp_Prod_DB_Weekly_Comparison with(nolock)
+            WHERE ServerName = ServerData.ServerName Order by ServerName ASC,TotalDataFileSizeGB_PercentChange DESC, DBName ASC,FileId ASC
+            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 0, '')) +
+        '</table><br><br>'
+    FROM ServerData;
+
+    IF @body_HTML IS NOT NULL AND LEN(@body_HTML) > 0
+    BEGIN
+        SET @hasData = 1;
+    END
+
+    IF @hasData = 1  
+    BEGIN  
+        SET @body_HTML =     
+        N'<p>       
+        Hi ITOps 1C DBA Team,    
+        <br>Please find the below MI Prod Servers Capacity Weekly Comparison Report.<br>
+		<br> Note: The current database data file sizes are compared against data from 14 days prior.<br>
+  <!--  <br>Note: Databases highlighted in red are Percentage of total GB Used of a Database >=25% when compared with data of two weeks before.<br> -->
+        <br> <br>      
+        </p>' +  
+        N'<style>
+            table, th, td {    
+            border:1px solid black;    
+            border-collapse: collapse;    
+            font-family:Serif;   
+            text-align: center;
+            padding: 3px;
+            font-size: 10.2pt;
+            }    
+            th {
+            background:#87ceeb;
+            }
+            p {
+            font-family:Serif;
+            }
+        </style>' + @body_HTML;  
+
+        -- Debug print to check the final HTML content
+        SELECT @body_HTML AS Final_HTML;
+  
+        EXEC msdb.dbo.sp_send_dbmail     
+        @profile_name = 'ITOps1CDBA',    
+        @body         = @body_HTML,    
+        @body_format  = 'HTML',    
+--          @recipients ='RaviShankar.C@cognizant.com;Janani.M2dcbb3@cognizant.com;Badam.Navya@cognizant.com; Bindu.Raavi@cognizant.com;pradheep.kumartk@cognizant.com; megha.singhal@cognizant.com;
+--Sneha.S5@cognizant.com;Vimalraj.S3@cognizant.com;vidya.erragopula@cognizant.com;
+--Burra.Sandhya@cognizant.com;PydaVenkata.SrihimaVishnuSeshasai@cognizant.com;EDMDBA@cognizant.com',
+     --     @copy_recipients='kirankumar.gannavaram@cognizant.com;ashwathi.k@cognizant.com;
+		   --balakrishna.mannepalli@cognizant.com;vijaianand.pv@cognizant.com;
+		  @copy_recipients='balakrishna.mannepalli@cognizant.com;pydavenkata.srihimavishnuseshasai@cognizant.com',
+        @subject = 'MI Prod DB Capacity Weekly Comparison Report';    
+    END;  
+
+    DROP TABLE #temp_Prod_DB_Weekly_Comparison;  
+END    
+GO

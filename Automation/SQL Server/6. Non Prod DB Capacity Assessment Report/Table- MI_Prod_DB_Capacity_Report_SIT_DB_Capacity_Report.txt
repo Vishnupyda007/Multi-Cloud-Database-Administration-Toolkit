@@ -1,0 +1,42 @@
+CREATE TABLE MI_Prod_DB_Capacity_Report (
+    ServerName NVARCHAR(128),
+    DBName NVARCHAR(128),
+    [Name] NVARCHAR(128),
+    FileId INT,
+    PhysicalName NVARCHAR(260),
+    TotalSizeGB DECIMAL(18,3),
+    AvailableSpaceGB DECIMAL(18,3),
+    UsedSpaceGB DECIMAL(18,3),
+    PercentageUsed DECIMAL(5,2),
+    TotalDatabaseSizeGB NVARCHAR(50), -- Increased length to 50
+    PercentageOfTotalGBUsed NVARCHAR(10) -- Increased length to 10
+)
+
+
+
+----Final Deployed------
+
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[MI_SIT_DB_Capacity_Report]    Script Date: 2/10/2025 10:49:06 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[MI_SIT_DB_Capacity_Report](
+	[ServerName] [nvarchar](128) NULL,
+	[DBName] [nvarchar](128) NULL,
+	[Name] [nvarchar](128) NULL,
+	[FileId] [int] NULL,
+	[PhysicalName] [nvarchar](260) NULL,
+	[TotalSizeGB] [nvarchar](50) NULL,
+	[AvailableSpaceGB] [nvarchar](50) NULL,
+	[UsedSpaceGB] [nvarchar](50) NULL,
+	[PercentageUsed] [nvarchar](50) NULL,
+	[TotalDatabaseSizeGB] [nvarchar](50) NULL,
+	[PercentageOfTotalGBUsed] [nvarchar](10) NULL
+) ON [PRIMARY]
+GO

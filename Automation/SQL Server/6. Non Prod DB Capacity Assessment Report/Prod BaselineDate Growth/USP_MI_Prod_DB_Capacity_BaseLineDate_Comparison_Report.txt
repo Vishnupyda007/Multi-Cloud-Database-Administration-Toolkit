@@ -1,0 +1,169 @@
+
+
+ALTER Procedure dbo.USP_MI_Prod_DB_Capacity_BaseLineDate_Comparison_Report with encryption
+/*============================================================
+  Purpose : Monthly Latest vs Baseline Growth Snapshot
+  Notes   : 
+    - Uses TRY_CONVERT + NULLIF (safer than ISNUMERIC)
+    - Excludes system DBs
+    - Adds friendly display columns for reporting
+============================================================*/
+as 
+begin
+DECLARE @BaselineDate date = '2025-05-27';
+-- 0) Clean temp table
+IF OBJECT_ID('tempdb..#GrowthData') IS NOT NULL
+    DROP TABLE #GrowthData;
+
+
+
+;WITH LatestMonthData AS
+(
+    SELECT
+        r.ServerName,
+        r.DBName,
+        r.Name,
+        r.TotalDatabaseSizeGB,
+        r.TotalDataFileSizeGB,
+        r.PercentageOfTotalGBUsed,
+        r.[Datetime],
+        ROW_NUMBER() OVER
+        (
+            PARTITION BY r.ServerName, r.DBName, r.Name
+            ORDER BY r.[Datetime] DESC
+        ) AS rn
+    FROM dbo.MI_Prod_DB_Capacity_Report r WITH (NOLOCK)
+    WHERE
+        YEAR(r.[Datetime]) = YEAR(GETDATE())
+        AND MONTH(r.[Datetime]) = MONTH(GETDATE())   -- better than DATENAME(MONTH,...)
+),
+BaselineData AS
+(
+    SELECT
+        b.ServerName,
+        b.DBName,
+        b.Name,
+        b.TotalDataFileSizeGB AS Baseline_TotalDataFileSizeGB,
+		b.TotalDatabaseSizeGB,
+		b.PercentageOfTotalGBUsed,
+        CAST(b.[Datetime] AS date) AS BaselineDate
+    FROM dbo.MI_Prod_DB_Capacity_Daily_STG b WITH (NOLOCK)
+    WHERE CAST(b.[Datetime] AS date) = @BaselineDate
+),
+Final AS
+(
+    SELECT
+        a.ServerName,
+        a.DBName AS DatabaseName,
+        a.Name,
+        a.[Datetime] AS SnapshotDateTime,
+
+        -- Numeric conversions (safe)
+        TRY_CONVERT(float, a.TotalDatabaseSizeGB)    AS TotalDatabaseSizeGB_F,
+        TRY_CONVERT(float, a.TotalDataFileSizeGB)    AS TotalDataFileSizeGB_F,
+        TRY_CONVERT(float, b.Baseline_TotalDataFileSizeGB) AS BaselineDataFileSizeGB_F,
+        TRY_CONVERT(float, a.PercentageOfTotalGBUsed) AS PercentageOfTotalGBUsed_F,
+
+        b.BaselineDate
+    FROM LatestMonthData a
+    left JOIN BaselineData b
+        ON  a.ServerName = b.ServerName
+        AND a.DBName     = b.DBName
+        AND a.Name       = b.Name
+    WHERE
+        a.rn = 1
+        AND a.DBName NOT IN ('master','model','msdb','tempdb')
+		and (a.PercentageOfTotalGBUsed <> '' OR a.TotalDatabaseSizeGB <> '')
+)
+SELECT
+    ServerName,
+    DatabaseName,
+    Name,
+
+    -- Round numeric fields for output consistency
+    ROUND(TotalDatabaseSizeGB_F, 4)     AS TotalDatabaseSizeGB,
+    ROUND(TotalDataFileSizeGB_F, 4)     AS TotalDataFileSizeGB,
+    ROUND(BaselineDataFileSizeGB_F, 4)  AS TotalDataFileSizeGB_Baseline,
+    BaselineDate                         AS BaselineDate,
+
+    -- Absolute change
+    ROUND(TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F, 4) AS TotalDataFileSizeChange,
+
+    ROUND(PercentageOfTotalGBUsed_F, 4) AS PercentageOfTotalGBUsed,
+
+    -- % change (safe; returns NULL when baseline is NULL/0)
+    ROUND(
+        ((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+          / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0
+    , 2) AS TotalDataFileSizeGB_PercentChange,
+
+    FORMAT(SnapshotDateTime, 'dd-MM-yyyy') AS FormattedDate,
+
+    -- Status
+    CASE
+        WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN 'Increased'
+        WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) < 0 THEN 'Decreased'
+        ELSE 'No Change'
+    END AS DatabaseSizeStatus,
+
+    CASE
+        WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN 'red'
+        ELSE 'green'
+    END AS StatusColor,
+
+    /*============================================================
+      Optional (report-friendly) fields:
+      - PercentChangeDisplay: shows N/A/New/+x.xx%
+      - GrowthSummary: +x.xx GB (+y.yy%)
+    ============================================================*/
+    CASE
+        WHEN BaselineDataFileSizeGB_F IS NULL OR TotalDataFileSizeGB_F IS NULL THEN 'N/A'
+        WHEN BaselineDataFileSizeGB_F = 0 AND TotalDataFileSizeGB_F > 0 THEN 'New'
+        WHEN BaselineDataFileSizeGB_F = 0 AND TotalDataFileSizeGB_F = 0 THEN '0.00%'
+        ELSE
+            CONCAT(
+                CASE WHEN (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                           / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0) > 0
+                     THEN '+' ELSE '' END,
+                FORMAT(
+                    (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                      / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0),
+                    'N2'
+                ),
+                '%'
+            )
+    END AS PercentChangeDisplay,
+
+    CONCAT(
+        CASE WHEN (TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F) > 0 THEN '+' ELSE '' END,
+        FORMAT(ROUND(TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F, 2), 'N2'),
+        ' GB (',
+        CASE
+            WHEN BaselineDataFileSizeGB_F IS NULL OR BaselineDataFileSizeGB_F = 0 THEN 'N/A'
+            ELSE CONCAT(
+                CASE WHEN (((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                           / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0) > 0
+                     THEN '+' ELSE '' END,
+                FORMAT(
+                    ROUND((((TotalDataFileSizeGB_F - BaselineDataFileSizeGB_F)
+                      / NULLIF(BaselineDataFileSizeGB_F, 0)) * 100.0), 2),
+                    'N2'
+                ),
+                '%'
+            )
+        END,
+        ')'
+    ) AS GrowthSummary
+
+INTO #GrowthData
+FROM Final
+--WHERE
+    -- Ensure “relevant columns not empty” (works whether they’re varchar or numeric)
+   -- (TotalDatabaseSizeGB_F IS NOT NULL OR TotalDataFileSizeGB_F IS NOT NULL);
+
+-- Output
+SELECT *
+FROM #GrowthData
+ORDER BY TotalDataFileSizeChange DESC;
+end
+GO
