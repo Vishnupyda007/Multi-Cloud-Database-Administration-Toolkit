@@ -1,0 +1,1 @@
+select * from sys.dm_geo_replication_link_status 
