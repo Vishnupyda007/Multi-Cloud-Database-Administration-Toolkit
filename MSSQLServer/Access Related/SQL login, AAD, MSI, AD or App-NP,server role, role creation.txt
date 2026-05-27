@@ -1,0 +1,97 @@
+USE [master]
+GO
+
+CREATE LOGIN [EDS_SUB] WITH PASSWORD=N'Ed$$ub@2023', DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF
+GO   ---------(script to create sql login)
+
+ALTER LOGIN login_name ENABLE/DISABLE   -------(to enable or disable any login, by default without this> login will be enabled)
+
+
+USE [CentralRepository]
+GO
+
+CREATE USER [EDS_SUB] FOR LOGIN [EDS_SUB] WITH DEFAULT_SCHEMA=[dbo]     ----------(script to map login to db)
+GO
+
+GRANT INSERT ON EDS_WD_Associate_Job_Data_STG_CURR TO EDS_SUB
+GRANT UPDATE ON EDS_WD_Associate_Job_Data_STG_CURR TO EDS_SUB
+GRANT DELETE ON EDS_WD_Associate_Job_Data_STG_CURR TO EDS_SUB
+
+
+use [OneC_2451]
+GO
+GRANT EXECUTE TO [eds_pt]
+GO
+use [OneC_2451]
+GO
+GRANT SELECT TO [eds_pt]
+GO
+
+
+---------Script for Server role login script------------------
+
+use [master]
+GO
+GRANT VIEW SERVER STATE TO [EDS_SUB]
+GO
+
+
+-------------script to create Database role----------------
+
+USE [CentralRepository]
+GO
+CREATE ROLE [Discovercrsrole]
+GO
+
+
+-----------script to alter role or grant a Database role------------
+
+USE [CentralRepository]
+GO
+ALTER ROLE [db_datareader] ADD MEMBER [CTS\ITOpsEDSPRODL3ReadUser]
+GO
+
+
+-------------script to create SA in non MI servers or AAD without CTS\ in MI servers----------
+
+USE [master]
+GO
+
+CREATE LOGIN [CTS\ITOpsEDSPRODL3ReadUser] FROM WINDOWS WITH DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english]
+GO         -----------(OnPrem or SA enabled servers)
+
+
+USE [master]
+GO
+
+CREATE LOGIN [CTS\ITOpsEDSPRODL3ReadUser] WITH DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english]
+GO              ----------(AAD enabled servers)
+
+
+
+---------MSI Key creation, alter, grant ------------ for MSI key, we can give read write and execute access
+
+> create user [1716-MSI-NP] from external provider
+
+>Alter role [db_datareader] add member [1716-MSI-NP]
+
+>Alter role [db_datawriter] add member [1716-MSI-NP]
+ 
+> grant execute to [1716-MSI-NP]
+
+
+------- mapping deploytool to a db, give db.owner;reader& writer.
+
+
+---- Creation of App-NP or AD login -- in app db level, DB_writer,DB_reader, execute permission where as public in crs db.
+Create user [id-App-NP] from external provider
+
+
+
+----- CREATE AAD Account---------------
+
+
+USE [master]
+GO
+CREATE LOGIN [SEDSUser_NP@cognizant.com] FROM EXTERNAL PROVIDER WITH DEFAULT_DATABASE=[master], DEFAULT_LANGUAGE=[us_english]
+GO

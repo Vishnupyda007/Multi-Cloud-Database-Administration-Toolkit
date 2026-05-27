@@ -1,0 +1,9 @@
+sp_helpuser [ [ @name_in_db = ] N'name_in_db' ]
+[ ; ]
+
+
+Example: EXEC sp_helpuser 'dbo';
+
+The following example lists all users in the current database.
+
+EXEC sp_helpuser;

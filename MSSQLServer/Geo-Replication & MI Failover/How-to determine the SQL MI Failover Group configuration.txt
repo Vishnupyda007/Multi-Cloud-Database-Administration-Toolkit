@@ -1,0 +1,71 @@
+How-to determine the SQL MI Failover Group configuration-----
+Reference: https://techcommunity.microsoft.com/blog/azuresqlblog/how-to-determine-the-sql-mi-failover-group-configuration/2744255
+
+
+Continuing the topic of High Availability from the previous post on the timestamp of the last SQL MI failover, 
+this time we shall be focusing on the discovery of the Failover Group configuration and the replica we are currently connected to. 
+This post is the first in the series of at least 3 posts that we are planning to release. Each post will focus on the different aspect of Failover Groups – determining the existence of the Failover Group and the name of the interconnected SQL MI in the other Azure region, determining the total number of replicas and their type, and queries helping in troubleshooting the databases & the replicas not only across the Failover Group but also within the Availability Group on Business Critical service tier.
+
+ 
+
+If you are interested in other posts on how-to discover different aspects of SQL MI - please visit the http://aka.ms/sqlmi-howto, which serves as a placeholder for the series.
+
+ 
+
+Without spending too much time on the explanations that are already available in our public documentation, I will simplify the Failover Groups as the concept which allows customers to have the advantage of high availability across the different Azure regions by the virtue of the asynchronous replication.
+
+NikoNeugebauer_0-1631473350644.png
+
+There is a very important aspect of Failover Groups – the system databases are not replicated across the regions, and this means that the importance of synchronizing such objects, as the SQL Agent Jobs, Logins, and others that are stored in [master] and [msdb] databases is totally up to the customer.
+
+Sometimes, DBA’s or Developers will not have access to the Azure Portal or Azure CLI/Powershell to discover the current configurations of the Azure SQL Managed Instance, and sometimes some T-SQL deployments might be influenced by the existence of the Failover Group configurations.
+
+To cover those scenarios and to allow you the maximum discovery of Azure SQL MI, here are the scripts to do it right:
+
+Some of the most important details about the Failover Group replication configuration is stored in the sys.dm_hadr_fabric_continuous_copy_status DMV under the [partner_server] column pointing to the name of the respective failover partner on other SQL MI, but to be able to extract this information, customer needs to be connected to the primary replica that is either serving as the primary for the Failover Group replication or the other primary replica in the secondary region that will take over the primary role in the case of the Failover Group failover.
+
+
+To verify if we are connected to the primary replica, we can easily use the sys.dm_hadr_database_replica_states DMV:
+
+ 
+
+ 
+
+DECLARE @FGpartnerServer NVARCHAR(32);
+SELECT @FGpartnerServer = partner_server
+	FROM sys.dm_hadr_fabric_continuous_copy_status;
+IF( NOT EXISTS (SELECT 1 as IsPrimaryReplica FROM sys.dm_hadr_database_replica_states rs WHERE rs.is_primary_replica = 1 ) )
+BEGIN
+	SELECT 'Your have established a connection to a Secondary Replica of SQL MI, where the information about Failover Groups is not available!' as FailoverGroupInfo;
+END
+ELSE 
+BEGIN
+	IF( @FGpartnerServer IS NOT NULL )
+	BEGIN
+		SELECT 'Your SQL MI is using Failover Group with a partner SQL MI ''' + @FGpartnerServer + '.database.windows.net''' as FailoverGroupInfo;
+	END
+	ELSE
+		SELECT 'Your SQL MI is NOT using Failover Groups!' as FailoverGroupInfo;
+END
+ 
+
+ 
+
+NikoNeugebauer_1-1631473538660.png
+
+As you can see on the picture above, that my primary replica [niko-test] SQL MI is connected with the help of Failover Group to the [niko-failover-test] SQL MI in the secondary region (North Europe & West Europe respectively). Running the same query against the secondary region, will deliver the name of the primary SQL MI.
+
+
+Should the same query be executed on a SQL MI without a failover group, the following message shall be delivered to the user, stating that the connected Azure SQL MI is not using Failover Groups:
+
+NikoNeugebauer_2-1631473590156.png
+
+In the case of a connection to a secondary replica on Business Critical service tier, the following message will be presented:
+
+NikoNeugebauer_3-1631473631333.png
+
+
+This basic information can serve you as a basis for the further explorations of Failover Groups on Azure SQL MI. In the next post we shall focus on the Failover Group Replica Details.
+
+Updated Sep 13, 2021
+Version 3.0

@@ -1,0 +1,3 @@
+Access to generate reports in server -
+
+Grant VIEW SERVER STATE to [username]

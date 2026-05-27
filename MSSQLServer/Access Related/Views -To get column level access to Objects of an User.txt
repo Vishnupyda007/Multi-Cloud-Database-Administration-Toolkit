@@ -1,0 +1,71 @@
+SELECT distinct ov.name as ViewName,princ.[name] AppPoolUserName into #view
+FROM sys.sql_expression_dependencies  d with(nolock)
+INNER JOIN sys.objects ov  with(nolock) ON d.referencing_id = ov.object_id 
+--LEFT JOIN sys.objects ot with(nolock) ON d.referenced_id = ot.object_id 
+LEFT JOIN sys.database_permissions perm with(nolock) ON perm.[major_id] = ov.[object_id]
+LEFT JOIN sys.columns col with(nolock) ON col.[object_id] = perm.major_id AND col.[column_id] = perm.[minor_id]
+LEFT JOIN sys.database_principals princ with(nolock) ON perm.[grantee_principal_id] = princ.[principal_id] 
+LEFT JOIN sys.login_token ulogin with(nolock) ON princ.[sid] = ulogin.[sid]
+WHERE  ov.type_desc = 'VIEW'
+AND princ.[type] in ('X','E','S') --and ( princ.[name] like 'OneC_%' or princ.[name] like 'DiscoverCRS' )
+and ov.name  in ('vw_CentralRepository_LocationMaster_Clientmaster',
+'vw_CentralRepository_LocationMaster_LegalCompanyMaster',
+'vw_CentralRepository_LocationMaster_Locationclientmapping',
+'vw_CentralRepository_LocationMaster_AccessManagement',
+'vw_CentralRepository_LocationMaster_AccessTagging',
+'vw_CentralRepository_LocationMaster_Companymaster',
+'vw_CentralRepository_LocationMaster_Legalentitymaster',
+'vw_CentralRepository_LocationMaster_Locationmaster',
+'vw_CentralRepository_LocationMaster_Replicationmaster',
+'vw_CentralRepository_LocationMaster_Setidmaster',
+'vw_CentralRepository_LocationMaster_NearshoreGGMMaster') and perm.[state_desc]='GRANT'
+--(To Retrieve the columns of a object that user has)
+SELECT  
+    [UserName] = CASE princ.[type] 
+                   -- WHEN 'S' THEN princ.[name]
+                   -- WHEN 'U' THEN ulogin.[name] COLLATE Latin1_General_CI_AI
+                    WHEN 'X' THEN princ.[name]-- COLLATE Latin1_General_CI_AI
+                 END,
+    [DatabaseUserName] = princ.[name],        
+    [PermissionType] = perm.[permission_name],       
+    [PermissionState] = perm.[state_desc],       
+    [ObjectType] = obj.type_desc,--perm.[class_desc],       
+    [ObjectName] = OBJECT_NAME(perm.major_id),
+    [ColumnName] = col.[name]
+    into #col
+FROM    
+    --database user
+sys.database_principals princ with(nolock) 
+LEFT JOIN
+    --Login accounts
+    sys.login_token ulogin with(nolock) on princ.[sid] = ulogin.[sid]
+LEFT JOIN        
+    --Permissionsr
+    sys.database_permissions perm with(nolock) ON perm.[grantee_principal_id] = princ.[principal_id]
+LEFT JOIN
+    --Table columns
+    sys.columns col with(nolock) ON col.[object_id] = perm.major_id 
+                    AND col.[column_id] = perm.[minor_id]
+LEFT JOIN
+    sys.objects obj with(nolock) ON perm.[major_id] = obj.[object_id]
+WHERE 
+    --princ.[type] in ('X')  and 
+    obj.type_desc ='VIEW' and perm.[state_desc]='GRANT'
+SELECT A.ViewName,A.AppPoolUserName,ISNULL(A.columnname,' Full Access') columnname FROM (
+SELECT v.ViewName,v.AppPoolUserName,
+columnname=STUFF  
+(  
+     (  
+       SELECT DISTINCT ', ' + CAST(columnname AS VARCHAR(MAX))  
+       FROM #col c   
+       WHERE v.ViewName = c.ObjectName and v.AppPoolUserName = c.DatabaseUserName  and
+       columnname IS NOT null  
+       FOR XML PATH('')  
+     )
+     ,1,1,''  
+)  
+FROM #view v 
+--where v.AppPoolUserName = '1868-App-P'
+GROUP BY v.ViewName,v.AppPoolUserName) A
+drop table #view
+drop table #col

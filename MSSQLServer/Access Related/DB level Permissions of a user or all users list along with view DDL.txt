@@ -1,0 +1,69 @@
+>> Script to check the permissions or accesses that the specific user has in the db.
+
+select  princ.name
+,       princ.type_desc
+,       perm.permission_name
+,       perm.state_desc
+,       perm.class_desc
+,       object_name(perm.major_id)
+from    sys.database_principals princ
+left join
+        sys.database_permissions perm
+on      perm.grantee_principal_id = princ.principal_id
+where princ.name='give user name here'
+
+
+
+------------To get all the users, their roles, and permissions in one table--------
+
+select  princ.name
+,       princ.type_desc
+,       perm.permission_name
+,       perm.state_desc
+,       perm.class_desc
+,       object_name(perm.major_id)
+from    sys.database_principals princ
+left join
+        sys.database_permissions perm
+on      perm.grantee_principal_id = princ.principal_id
+
+
+
+----------------------with Type_desc--------------
+
+SELECT
+   u.name as 'User Name',
+  p.Permission_name as 'Permission',
+  o.name as 'Object Name'
+FROM
+   sys.database_permissions p
+INNER JOIN
+   sys.objects o ON p.major_id = o.object_id
+INNER JOIN
+   sys.database_principals u ON p.grantee_principal_id = u.principal_id
+WHERE
+   o.type_desc = 'view'
+
+
+
+
+------------With View DDL---------------
+
+
+
+
+SELECT DISTINCT
+    u.name AS 'User Name',
+    p.permission_name AS 'Permission',
+    o.name AS 'Object Name',
+	p.state_desc,
+    OBJECT_DEFINITION(o.object_id) AS 'View DDL'
+FROM
+    sys.database_permissions p
+INNER JOIN
+    sys.objects o ON p.major_id = o.object_id
+INNER JOIN
+    sys.database_principals u ON p.grantee_principal_id = u.principal_id
+WHERE
+    u.name = 'CTS\SUSBancorpService'
+    --AND o.type = 'V'; 

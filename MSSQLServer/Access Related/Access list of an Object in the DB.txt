@@ -1,0 +1,48 @@
+USE [DatabaseName]
+SELECT
+    dp.state_desc AS PermissionState,
+    dp.permission_name AS PermissionType,
+    OBJECT_NAME(dp.major_id) AS ObjectName,
+s.name AS SchemaName,
+p.name AS PrincipalName,
+    p.type_desc AS PrincipalType
+FROM
+    sys.database_permissions AS dp
+JOIN
+    sys.objects AS o ON dp.major_id = o.object_id
+JOIN
+    sys.schemas AS s ON o.schema_id = s.schema_id
+JOIN
+    sys.database_principals AS p ON dp.grantee_principal_id = p.principal_id
+WHERE
+OBJECT_NAME(dp.major_id) ='cd_centralrepository_associate_details'
+
+
+
+-----------along with referring table--------------
+
+USE [CentralRepository]
+GO
+SELECT
+    dp.state_desc AS PermissionState,
+    dp.permission_name AS PermissionType,
+    OBJECT_NAME(dp.major_id) AS ObjectName,
+    s.name AS SchemaName,
+    p.name AS PrincipalName,
+    p.type_desc AS PrincipalType,
+    CASE 
+        WHEN OBJECTPROPERTY(o.object_id, 'IsView') = 1 THEN dep.referenced_entity_name
+        ELSE NULL
+    END AS BaseTableName
+FROM
+    sys.database_permissions AS dp
+JOIN
+    sys.objects AS o ON dp.major_id = o.object_id
+JOIN
+    sys.schemas AS s ON o.schema_id = s.schema_id
+JOIN
+    sys.database_principals AS p ON dp.grantee_principal_id = p.principal_id
+LEFT JOIN
+    sys.sql_expression_dependencies AS dep ON o.object_id = dep.referencing_id
+WHERE
+OBJECT_NAME(dp.major_id) in ('ObjectName')

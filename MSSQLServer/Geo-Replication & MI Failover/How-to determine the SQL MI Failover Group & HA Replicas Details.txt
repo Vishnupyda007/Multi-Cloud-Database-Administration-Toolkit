@@ -1,0 +1,115 @@
+How-to determine the SQL MI Failover Group & HA Replicas Details------
+Reference: https://techcommunity.microsoft.com/blog/azuresqlblog/how-to-determine-the-sql-mi-failover-group--ha-replicas-details/2746995
+
+
+
+
+Continuing on the topic of High Availability and Failover Groups from the previous post on How-to determine the SQL MI Failover Group configuration, in this how-to we shall dive a little bit deeper into the information on the role of the replica we are connected to and the overall available details on the configuration of the High Availability.
+
+ 
+
+If you are interested in other posts on how-to discover different aspects of SQL MI - please visit the http://aka.ms/sqlmi-howto, which serves as a placeholder for the series.
+
+ 
+
+NikoNeugebauer_0-1631558988040.png
+We have decided to include 5 key attributes to show the relevant information about High Availability configuration. Given that as per current architecture, we are replicating the primary replica from the primary region to the primary replica on the secondary region, and on the Business Critical service tier, the 6 additional secondary replicas spread over the both regions (3 secondaries in primary region and 3 secondaries in the secondary region) are replicated out of the respective primaries and do not posses any information about the Failover – there is no sense to show the total number of replicas, but the total number of the visible replicas.
+Even though right now on both available service tiers (General Purpose & Business Critical) it is easy to guess the total number of replicas, even when we are connected to one of the secondary replicas, we are going to provide you with the information that is visible, without guesses, because one day everything can change, but hopefully the T-SQL we are providing will still be able to deliver some good value.
+
+ 
+
+The 5 key attributes are:
+
+Are we connected to a Primary Replica (There can be 2 in a Failover Group configuration)
+Are we connected to a Secondary Replica
+Total number of locally visible secondary replicas (as mentioned above, even though when we are connected to a secondary replica, this information is limited, it is still valuable information when connected to the primary replica and serves High Availability purposes)
+Are we connected to a GeoReplica from the Failover Groups
+Is this replica is being Geo-Replicated (it can be replicated without Geo-replication just by the virtue of using Availability Groups on Business Critical service tier)
+These 5 attributes will tell us the story about which replica in Failover Groups we are connected to, and if, for that matter, there is a Failover Group or if it visible.
+
+ 
+
+Without a lot of further ado, I present you a query for determining those key attributes. These details are extracted from the 2 DMVs - sys.dm_hadr_database_replica_states and sys.dm_hadr_fabric_continuous_copy_status. We have already faced the first DMV in the previous blog post, and the second one is introduced here - it contain information about replication state, roles, replication lag and even more for each of the databases participating in the Failover Group. 
+
+ 
+
+ 
+
+SELECT IsPrimaryReplica, 
+		CASE WHEN DATABASEPROPERTYEX ('master', 'Updateability' ) = 'READ_ONLY' THEN 1 ELSE 0 END as IsHAReplica,
+		LocallyVisibleHAReplicas,
+		CASE WHEN GeoPartnerName IS NOT NULL AND ReplicaRole != 0 THEN 1 ELSE 0 END as IsGeoReplica,
+		CASE WHEN GeoPartnerName IS NOT NULL AND ReplicaRole = 0 THEN 1 ELSE CASE WHEN GeoPartnerName IS NULL AND ReplicaRole IS NULL THEN NULL ELSE 0 END END as IsGeoReplicated
+	FROM 
+	(SELECT MAX( CAST(is_primary_replica AS INT) ) as IsPrimaryReplica,
+			MAX( role ) as ReplicaRole,
+			MAX( partner_server ) as GeoPartnerName,
+			SUM( CASE WHEN is_primary_replica = 0 AND is_commit_participant = 1 THEN 1 ELSE 0 END ) as LocallyVisibleHAReplicas
+		FROM sys.dm_hadr_database_replica_states rs
+			LEFT JOIN sys.dm_hadr_fabric_continuous_copy_status fgc
+				ON rs.group_id = fgc.physical_database_id
+		WHERE rs.database_id = (SELECT ISNULL(MAX(maxsrc.database_id),4) FROM sys.dm_hadr_database_replica_states maxsrc WHERE maxsrc.database_id BETWEEN 5 AND 32759)
+	) src;
+ 
+
+ 
+
+Let's consider a simple General Purpose SQL MI, that has no Failover Groups configured, and the result is presented below:
+
+NikoNeugebauer_2-1631560213683.png
+
+We are connected to the primary replica, and there are no other HA Replicas, no Geo Replicas and of course it is not a Geo-Replica.
+
+ 
+
+Failover Group on General Purpose service tier
+Next step would be to test a General Purpose (GP) SQL Managed Instance that has Failover Group configured and the result is presented below, with the only difference being presented that this primary replica is being Geo-Replicated (see the last column).
+
+NikoNeugebauer_3-1631560355208.png
+Of course, we are unable to connect to a local secondary replica, in this case, because the secondary replica in stand-by mode is totally invisible to the customer, until it is needed.
+
+ 
+
+Connecting to the other primary replica, that is being replicated to, gives us the identification "10010", meaning that we are connected to a primary read-only replica that is receives replication information from the original, writable replica:
+
+NikoNeugebauer_4-1631560569986.png
+
+ 
+
+Failover Group on Business Critical service tier
+Switching to a Business Critical (BC) primary replica will get us the following information:
+
+NikoNeugebauer_2-1631565473694.png
+
+We are dealing with a primary replica that has 3 locally visible secondary replicas and it is being replicated to a Geo-Replica in another reigon.
+
+ 
+
+Connecting to a secondary read-only replica on Business Critical service tier will produce the following result:
+
+NikoNeugebauer_1-1631564561833.png
+There is no visible secondary replicas and nothing is being replicated from the secondary replica.
+
+ 
+
+Failover Group secondary replicas
+On the Business Critical primary replica on the secondary region we shall have confirmation of it being a primary replica and the visibility of the local secondary replicas (3 of them), plus the information that this replica serves as a geo-replica:
+
+NikoNeugebauer_0-1631564341154.png
+
+ 
+
+Connecting to the readable secondary replica will produce the following result, that corresponds the reality - the replica that we connected to with the help of the parameter (ApplicationIntent=ReadOnly) is just a secondary replica, and it is not being itself a Geo-Replica in the first degree or being geo-replicated (only the primary replica can be geo-replicated). 
+
+NikoNeugebauer_1-1631564561833.png
+
+ 
+
+Failover Group with no databases
+The last case to consider in our how-to is an empty SQL Managed Instance - without any customer databases, where Failover Groups are not replicating any database yet. In this case we have NULL for the [IsGeoReplicated] column, since without any actual replication, there is no information about the partner server and hence would be a much bigger effort to discover:
+
+NikoNeugebauer_3-1631566541748.png
+
+ 
+
+In the next post we shall focus on some of the troubleshooting queries that can be used in order to verify if the replication between different replicas is doing fine.

@@ -1,0 +1,50 @@
+DECLARE @Counter INT = 1;
+
+WHILE @Counter <= 50000
+BEGIN
+    INSERT INTO EmployeeData (EmployeeID, FirstName, LastName, Department, Salary, JoiningDate)
+    VALUES (
+        @Counter,
+        CONCAT('FirstName', @Counter),
+        CONCAT('LastName', @Counter),
+        CASE 
+            WHEN @Counter % 4 = 0 THEN 'HR'
+            WHEN @Counter % 4 = 1 THEN 'IT'
+            WHEN @Counter % 4 = 2 THEN 'Finance'
+            ELSE 'Marketing'
+        END,
+        ROUND(RAND() * 50000 + 30000, 2),
+         GETDATE()
+    );
+
+    SET @Counter = @Counter + 1;
+END;
+
+
+
+--------------------Update Script-----------------------
+
+
+USE TEST;
+GO
+
+DECLARE @Counter INT = 150001;
+
+WHILE @Counter <= 175000
+BEGIN
+    UPDATE EmployeeData
+    SET 
+        FirstName = CONCAT('UpdatedFirstName', @Counter),
+        LastName = CONCAT('UpdatedLastName', @Counter),
+        Department = CASE 
+                        WHEN @Counter % 4 = 0 THEN 'HR'
+                        WHEN @Counter % 4 = 1 THEN 'IT'
+                        WHEN @Counter % 4 = 2 THEN 'Finance'
+                        ELSE 'Marketing'
+                    END,
+        Salary = ROUND(RAND() * 60000 + 40000, 2),
+        JoiningDate = DATEADD(DAY, -(@Counter % 365), GETDATE())
+    WHERE EmployeeID = @Counter;
+
+    SET @Counter = @Counter + 1;
+END;

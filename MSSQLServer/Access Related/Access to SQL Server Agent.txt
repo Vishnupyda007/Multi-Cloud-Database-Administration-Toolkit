@@ -1,0 +1,28 @@
+Grant access to create and manage SQL Jobs in SQL Server Agent - 
+
+Map the login to msdb database and provide the following access -
+SQLAgentOperatorRole,
+SQLAgentReaderRole,
+SQLAgentUserRole 
+
+
+Understanding SQL Server Agent Roles
+SQL Server provides three fixed database roles in the msdb database specifically for managing SQL Server Agent:
+
+SQLAgentUserRole
+SQLAgentReaderRole
+SQLAgentOperatorRole
+
+>>SQLAgentUserRole
+Purpose: Members of this role can create their own jobs, view the list of jobs, and manage their own jobs.
+Best for: Users who need to create and manage their own jobs without accessing jobs owned by others.
+
+
+>>SQLAgentReaderRole
+Purpose: Members of this role can view the list of all jobs, including the ones they don’t own, and read job-related data.
+Best for: Users who need to monitor jobs and view job histories, but don’t need to manage jobs owned by others.
+
+
+>>SQLAgentOperatorRole
+Purpose: Members of this role can manage all SQL Server Agent jobs, including creating, modifying, and deleting jobs, and starting and stopping jobs owned by others.
+Best for: Users who need comprehensive control over SQL Server Agent jobs, such as DBAs or power users.

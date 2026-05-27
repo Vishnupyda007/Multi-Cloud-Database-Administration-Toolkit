@@ -1,0 +1,32 @@
+DECLARE @sql NVARCHAR(MAX) = N'';
+DECLARE @dbName NVARCHAR(128);
+ 
+-- Cursor to iterate through all databases
+DECLARE db_cursor CURSOR FOR
+SELECT name
+FROM sys.databases
+WHERE state_desc = 'ONLINE' AND name NOT IN ('master', 'tempdb', 'model', 'msdb');
+ 
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @dbName;
+ 
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @sql += N'
+    USE ' + QUOTENAME(@dbName) + ';
+    SELECT ''' + @dbName + ''' AS DatabaseName, 
+           dp.name AS UserName, 
+           dp.type_desc AS UserType
+    FROM sys.database_principals dp
+    JOIN sys.database_role_members drm ON dp.principal_id = drm.member_principal_id
+    JOIN sys.database_principals rp ON drm.role_principal_id = rp.principal_id
+    WHERE rp.name = ''db_owner'' AND dp.type IN (''S'', ''E'', ''X'');';
+ 
+    FETCH NEXT FROM db_cursor INTO @dbName;
+END
+ 
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+ 
+-- Execute the dynamic SQL
+EXEC sp_executesql @sql;

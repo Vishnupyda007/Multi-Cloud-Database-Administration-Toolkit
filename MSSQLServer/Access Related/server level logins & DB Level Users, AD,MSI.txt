@@ -1,0 +1,13 @@
+-----Server Level-----
+select * from sys.syslogins
+
+
+select sp.name,sp.type_desc,sp.is_disabled,l.sysadmin from sys.server_principals sp
+left join sys.syslogins l on sp.sid=l.sid
+---- DB Level-----
+select * from sys.sysusers
+
+
+----We can get  AD/MSI and AAD As well-------
+select * from sys.database_principals p
+join sys.sysusers u on u.name=p.name where u.hasdbaccess=1

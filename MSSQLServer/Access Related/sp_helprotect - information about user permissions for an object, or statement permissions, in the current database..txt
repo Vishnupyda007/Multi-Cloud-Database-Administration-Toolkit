@@ -1,0 +1,11 @@
+sp_helprotect
+    [ [ @name = ] N'name' ]
+    [ , [ @username = ] N'username' ]
+    [ , [ @grantorname = ] N'grantorname' ]
+    [ , [ @permissionarea = ] 'permissionarea' ]
+[ ; ]
+
+
+
+example: EXEC sp_helprotect NULL, NULL, dbo;
+sp_helprotect null, 'mywizsit',null

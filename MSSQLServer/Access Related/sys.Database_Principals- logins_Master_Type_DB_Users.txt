@@ -1,0 +1,8 @@
+select * FROM sys.database_principals
+
+--
+select * from sys.server_principals
+
+
+-----
+select * from sys.sysusers

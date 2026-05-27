@@ -1,0 +1,14 @@
+select name FROM sys.database_principals WHERE [type] IN ('X','E')
+create user [123-app-p] from external provider
+
+create login[@cognizant.com] from external provider
+
+---------------------------------------
+
+SELECT 
+    name AS [UserName],
+    'CREATE USER [' + name + '] FROM EXTERNAL PROVIDER;' AS [CreateUserQuery]
+FROM 
+    sys.database_principals
+WHERE 
+    [type] IN ('X', 'e');

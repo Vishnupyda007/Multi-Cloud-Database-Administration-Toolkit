@@ -1,0 +1,1 @@
+alter table [Non_Prod_Replication_Error_Alert_Mail] add [time] [datetime] not null

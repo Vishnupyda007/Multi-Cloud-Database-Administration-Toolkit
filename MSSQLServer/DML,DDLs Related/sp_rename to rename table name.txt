@@ -1,0 +1,8 @@
+ALTER TABLE Student
+RENAME TO Student_Details;
+
+
+---------- OR--------------
+
+EXEC sp_rename 'Sales.SalesTerritory', 'SalesTerr';
+In this example, the Sales.SalesTerritory table is renamed to SalesTerr

@@ -1,0 +1,9 @@
+USE [master]
+
+GO
+
+/****** Object:  AvailabilityDatabase [DecommonDB]    Script Date: 11/13/2024 4:56:10 PM ******/
+ALTER AVAILABILITY GROUP [CTSINDESI_AG]
+REMOVE DATABASE [DecommonDB];
+
+GO

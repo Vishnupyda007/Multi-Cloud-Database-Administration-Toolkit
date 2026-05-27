@@ -1,0 +1,56 @@
+AD- Active Directory, MSI- Managed Service Indentity
+
+Service account - 
+
+is account created in database for the purpose of accessing certain schemas by group of people using same account to avoid individual logins. Service account don't own any objects under it, but it can have certain synonyms for security purpose and ease of use.
+
+View - 
+
+Its a virtual table, can also be defined as Stored query
+Readonly, updatable, materialized.
+
+
+
+->There will be two types of access - Serverice account and SQL login
+
+Environment	SQL Login Access
+Dev	Db_owner
+SIT	db_datareader, db_datawriter (DML), Execute
+UAT	db_datareader
+PT	db_datareader, db_datawriter (DML)
+
+
+
+->to revoke access to any view we need to attach app owner approval, ask user to share Server details, User details and SA and SQL login revoking.
+we need to revoke both sa and sql login anytime
+
+->If user is unable to see data in the view, ask Kindly share the source query that you are using to check the data
+ in the PT server.
+
+
+>>>>>grant or deny permissionb to user from a view
+
+---deny select on [viewname](columnName) to username  - code to revoke access
+
+---grant select on [viewname](columnName) to username - code to grant access
+
+
+
+
+---------MSI Key creation, alter, grant ------------ for MSI key, we can give read write and execute access
+
+> create user [1716-MSI-NP] from external provider
+
+>Alter role [db_datareader] add member [1716-MSI-NP]
+
+>Alter role [db_datawriter] add member [1716-MSI-NP]
+ 
+> grant execute to [1716-MSI-NP]
+
+
+------- mapping deploytool to a db, give db.owner;reader& writer.
+
+
+---- Creation of App-NP or AD login
+Create user [id-App-NP] from external provider
+

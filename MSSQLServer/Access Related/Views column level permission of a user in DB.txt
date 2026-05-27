@@ -1,0 +1,36 @@
+SELECT
+v.name AS ViewName,
+c.name AS ColumnName,
+u.name as UserName,
+p.permission_name,
+p.state_desc
+FROM
+    sys.views v
+JOIN
+    sys.columns c ON v.object_id = c.object_id
+JOIN
+    sys.database_permissions p ON v.object_id = p.major_id
+JOIN
+    sys.database_principals u ON p.grantee_principal_id = u.principal_id
+WHERE
+    p.state_desc='grant'
+AND u.name = '2652-App-P' Order by v.name ASC ;
+
+
+---------------------Or-------------------------
+
+
+SELECT
+v.name AS ViewName,
+c.name AS ColumnName
+FROM
+    sys.views v
+JOIN
+    sys.columns c ON v.object_id = c.object_id
+JOIN
+    sys.database_permissions p ON v.object_id = p.major_id
+JOIN
+    sys.database_principals u ON p.grantee_principal_id = u.principal_id
+WHERE
+    p.permission_name = 'SELECT'
+AND u.name = 'OneC_1405' Order by v.name ASC ;

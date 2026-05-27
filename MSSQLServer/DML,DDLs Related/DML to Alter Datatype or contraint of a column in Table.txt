@@ -1,0 +1,1 @@
+alter table [Non_Prod_Replication_Error_Alert_Mail] alter column [publication] [varchar](200) not null

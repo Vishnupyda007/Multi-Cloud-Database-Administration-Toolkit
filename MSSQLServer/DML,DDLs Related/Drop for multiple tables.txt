@@ -1,0 +1,3 @@
+drop table tablename,
+           tablename,
+           tablaname;--to drop multiple tables
