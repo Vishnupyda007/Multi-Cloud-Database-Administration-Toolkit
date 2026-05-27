@@ -1,0 +1,1 @@
+Compress-Archive -Path "E:\1CDBA_Data_Donot_Delete\EDS_Views_DDLs_Prod\*" -DestinationPath "E:\1CDBA_Data_Donot_Delete\EDS_Views_DDLs_Prod.zip" -Force

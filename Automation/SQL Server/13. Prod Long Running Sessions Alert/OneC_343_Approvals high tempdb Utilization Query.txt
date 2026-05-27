@@ -1,0 +1,40 @@
+use OneC_343_Approvals
+DROP TABLE IF EXISTS #TempApprovalInput;
+
+create table #TempApprovalInput
+(
+AckId varchar(?), EventId int, LastEvent Varchar(?), Exception varchar(max),LoggedOn Datetime,Lastupdated Datetime
+)
+DECLARE @starttime datetime=?, @endtime DATETIME=?
+SELECT count (?) as TotalInputCount from Approval_TD_InputValue with (nolock) where LastUpdated between @starttime and @endtime
+INSERT into #TempApprovalInput (AckId) select AckID from Approval_TD_InputValue with (nolock) where   [LastUpdated] between @starttime and @endtime
+
+DROP TABLE IF EXISTS #TempApprovalLevel1;
+
+CREATE TABLE #TempApprovalLevel1
+(
+AckId varchar(?), EventId int,EventName varchar(?), Exception varchar(max),ExceptionLoggedOn Datetime
+)
+insert into #TempApprovalLevel1 (AckId) select AckId from #TempApprovalInput where  
+ AckId not in (select AckId from [Approval_TD_InputEventStack] with(nolock) where EventID= ?)
+UPDATE #TempApprovalLevel1 set EventId = E.EventID, EventName = M.EventName from [Approval_TD_InputEventStack] E with (nolock) 
+ inner join Approval_MD_Event M with (nolock) on E.EventID =M.ApprovalEventID
+where #TempApprovalLevel1.AckId = E.AckID and E.EventID = (select top 1 EventID FROM Approval_TD_InputEventStack with(nolock) where AckId = #TempApprovalLevel1.AckId ORDER BY [lastUpdated] DESC )
+
+UPDATE #TempApprovalLevel1 set Exception = E.ErrorMessage, ExceptionLoggedOn =E.LoggedOn from Approval_TD_ExceptionLog E with (nolock) where #TempApprovalLevel1.AckId = E.AckID
+
+select COUNT(ackid) as FailedLevel1 from #TempApprovalLevel1
+ SELECT * from #TempApprovalLevel1 
+
+DELETE from #TempApprovalInput where AckId in (select AckId from  Approval_TD_SMS_ValidatedEventStackExternal with(nolock) where EventID in (135));
+update #TempApprovalInput set Lastupdated=I.Lastupdated from [Approval_TD_InputValue] I with (nolock) where #TempApprovalInput.AckId = I.AckID 
+UPDATE #TempApprovalInput set EventId = E.EventID ,LastEvent=M.EventName from Approval_TD_SMS_ValidatedEventStackExternal E with(nolock) 
+inner join Approval_MD_Event M with (nolock) on E.EventID =M.ApprovalEventID
+where #TempApprovalInput.AckId = E.AckID and E.EventID = (select top 1 EventID FROM Approval_TD_SMS_ValidatedEventStackExternal with(nolock) where AckId = #TempApprovalInput.AckId ORDER BY [lastUpdated] DESC )
+
+UPDATE #TempApprovalInput set Exception = E.ErrorMessage, LoggedOn =E.LoggedOn from Approval_TD_ExceptionLog E with (nolock)
+ where #TempApprovalInput.AckId = E.AckID
+
+SELECT COUNT(?) As TotalFailedCount from #TempApprovalInput
+SELECT AckId,EventId,LastEvent,Exception,LoggedOn,Lastupdated from #TempApprovalInput order by LoggedOn desc
+
