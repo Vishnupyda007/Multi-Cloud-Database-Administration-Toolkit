@@ -1,0 +1,1 @@
+Compress-Archive -Path "E:\1CDBA_Data_Donot_Delete\1C_Prod_DR_User_Access_Indexes_Backup\*" -DestinationPath "E:\1CDBA_Data_Donot_Delete\1C_Prod_DR_User_Access_Indexes_Backup.zip" -Force

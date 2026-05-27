@@ -1,0 +1,1 @@
+Compress-Archive -Path "\\ctsc00969373301\Backup\Daily_Server_Storagereport_Dontdelet\DR_INDEX_USER_Roles_ACCESS\Resultset\*" -DestinationPath "\\ctsc00969373301\Backup\Daily_Server_Storagereport_Dontdelet\DR_INDEX_USER_Roles_ACCESS\Resultset.zip" -Force
