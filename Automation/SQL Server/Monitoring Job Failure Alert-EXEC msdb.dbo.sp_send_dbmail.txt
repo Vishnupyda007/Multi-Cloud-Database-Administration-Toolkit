@@ -1,0 +1,9 @@
+EXEC msdb.dbo.sp_send_dbmail
+  @profile_name = 'ITOps1CDBA',
+  --@recipients='CRSDBASUPPORT@cognizant.com;EDMDBA@cognizant.com',
+  --@copy_recipients= '2275509@cognizant.com',
+  --@copy_recipients='VijaiAnand.PV@cognizant.com;KiranKumar.Gannavaram@cognizant.com;
+  --Ashwathi.K@cognizant.com;BalaKrishna.Mannepalli@cognizant.com;2275509@cognizant.com',
+  @subject = 'Failure Alert: ',
+  @body = '<html><body style="font-family:serif;">Hi Team,<br><br>ITOps 1C DBA Monitoring Job has been failed.</br><br>Regards,<br><b>ITOps 1C DBA Team<b></body></html>',
+    @body_format = 'HTML';

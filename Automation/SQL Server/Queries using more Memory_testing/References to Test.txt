@@ -1,0 +1,156 @@
+---Main query to use--------
+
+SELECT 
+    s.session_id,
+    r.start_time,
+    CONVERT(VARCHAR, DATEDIFF(SECOND, r.start_time, GETDATE()) / 86400) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, (DATEDIFF(SECOND, r.start_time, GETDATE()) % 86400) / 3600), 2) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, (DATEDIFF(SECOND, r.start_time, GETDATE()) % 3600) / 60), 2) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, DATEDIFF(SECOND, r.start_time, GETDATE()) % 60), 2) AS duration,
+    r.status AS run_status,
+    r.wait_type,
+    r.wait_time,
+    r.wait_resource,
+	s.memory_usage*8.0 as Used_Memory,---memory_usage as pages where each page size is 8kbs
+    (s.memory_usage * 8.0 / (SELECT physical_memory_kb FROM sys.dm_os_sys_info)) * 100 AS memory_usage_percentage,
+    --(s.memory_usage * 8.0 * 1024 /(SELECT total_physical_memory_kb FROM sys.dm_os_sys_memory)) * 100 AS MemoryUsagePercentage,
+    r.total_elapsed_time / 1000 AS elapsed_time_ms,
+    r.logical_reads,
+    r.reads,
+    r.writes,
+    s.host_name,
+    DB_NAME(r.database_id) AS database_name,
+    s.program_name,
+    SUBSTRING(qt.text, (r.statement_start_offset / 2) + 1, 
+              (CASE 
+                  WHEN r.statement_end_offset = -1 THEN LEN(CONVERT(NVARCHAR(MAX), qt.text)) * 2 
+                  ELSE r.statement_end_offset 
+               END - r.statement_start_offset) / 2 + 1) AS sql_query
+FROM 
+    sys.dm_exec_requests r
+JOIN 
+    sys.dm_exec_sessions s ON r.session_id = s.session_id
+CROSS APPLY 
+    sys.dm_exec_sql_text(r.sql_handle) AS qt
+WHERE 
+    s.is_user_process = 1;
+ 
+
+
+
+
+----------Server Memory----------
+
+------Query for CPU details
+SELECT
+    cpu_count AS 'Logical CPUs',
+    hyperthread_ratio AS 'Hyperthread Ratio',
+    physical_memory_kb / 1024.0 /1024.0 AS 'Physical Memory (GB)',
+    sqlserver_start_time AS 'SQL Server Start Time'
+FROM
+    sys.dm_os_sys_info;
+
+
+------Query for RAM details
+	SELECT
+    total_physical_memory_kb / 1024.0 / 1024.0 AS [Total RAM (GB)],
+    available_physical_memory_kb / 1024.0 / 1024.0 AS [Available RAM (GB)]
+FROM
+    sys.dm_os_sys_memory;
+
+
+
+
+--------Reference query to check CPU,Memory utilizations--------
+
+declare   @cpuUsage float 
+declare   @memoryUsage float 
+BEGIN
+SET NOCOUNT ON;
+SELECT TOP 1
+        @cpuUsage = 100 - r.SystemIdle
+    FROM (
+        SELECT
+            rx.record.value('(./Record/@id)[1]', 'int') AS record_id,
+            rx.record.value('(./Record/SchedulerMonitorEvent/SystemHealth/SystemIdle)[1]', 'int') AS SystemIdle
+        FROM (
+            SELECT CONVERT(XML, record) AS record
+            FROM sys.dm_os_ring_buffers
+            WHERE
+                ring_buffer_type = N'RING_BUFFER_SCHEDULER_MONITOR' AND
+                record LIKE '%<SystemHealth>%') AS rx
+        ) AS r
+    ORDER BY r.record_id DESC
+
+SELECT
+        @memoryUsage =
+            (((m.total_physical_memory_kb - m.available_physical_memory_kb) /
+              convert(float, m.total_physical_memory_kb)) *
+             100)
+    FROM sys.dm_os_sys_memory m
+END
+select @cpuUsage as 'CPU',@memoryUsage as 'Memory', getdate() as CurrentTime
+ 
+
+--1.      Identify High CPU / queries causing resource contention on the Server 
+
+SELECT TOP 20
+qs.total_elapsed_time / qs.execution_count / 1000000.0 AS average_seconds,
+qs.total_elapsed_time / 1000000.0 AS total_seconds,
+qs.execution_count,
+SUBSTRING (qt.text,qs.statement_start_offset/2,
+(CASE WHEN qs.statement_end_offset = -1
+THEN LEN(CONVERT(NVARCHAR(MAX), qt.text)) * 2
+ELSE qs.statement_end_offset END - qs.statement_start_offset)/2) AS individual_query,
+o.name AS object_name,
+DB_NAME(qt.dbid) AS database_name
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) as qt
+LEFT OUTER JOIN sys.objects o ON qt.objectid = o.object_id
+where qt.dbid = DB_ID()           
+ORDER BY total_seconds DESC;  
+
+
+WITH DB_CPU AS
+(SELECT	DatabaseID, 
+		DB_Name(DatabaseID)AS [DatabaseName], 
+		SUM(total_worker_time)AS [CPU_Time(Ms)] 
+FROM	sys.dm_exec_query_stats AS qs 
+CROSS APPLY(SELECT	CONVERT(int, value)AS [DatabaseID]  
+			FROM	sys.dm_exec_plan_attributes(qs.plan_handle)  
+			WHERE	attribute =N'dbid')AS epa GROUP BY DatabaseID) 
+SELECT	ROW_NUMBER()OVER(ORDER BY [CPU_Time(Ms)] DESC)AS [SNO], 
+	DatabaseName AS [DBName], [CPU_Time(Ms)], 
+	CAST([CPU_Time(Ms)] * 1.0 /SUM([CPU_Time(Ms)]) OVER()* 100.0 AS DECIMAL(5, 2))AS [CPUPercent] 
+FROM	DB_CPU 
+--WHERE	DatabaseID > 4 -- system databases 
+	--AND DatabaseID <> 32767  and DatabaseName =''-- ResourceDB 
+ORDER BY SNO OPTION(RECOMPILE);  
+--db wise cpu utilization 
+
+
+
+----------Scripts used by EDS Team---------
+
+exec sp_whoisactive @sort_order = '[reads] DESC' --physical_io, reads, physical_reads, writes, tempdb_current,
+,@get_transaction_info = 1
+,@show_sleeping_spids=0
+,@output_column_list = '[dd hh:mm:ss.mss][start_time][session_id][sql_text][status][wait_info][Used_Memory][temp%][reads][writes][host_name][database_name][program_name]'
+go
+
+
+------
+SET NOCOUNT ON
+
+IF OBJECT_ID(N'tempdb..#Memory_Percent') IS NOT NULL
+BEGIN
+DROP TABLE #Memory_Percent
+END
+GO
+declare @Memory_Threshold int = 98
+SELECT top 1 end_time,
+       avg_instance_memory_percent
+	   INTO #Memory_Percent
+FROM sys.dm_db_resource_stats
+
+select * from #Memory_Percent where avg_instance_memory_percent > @Memory_Threshold
