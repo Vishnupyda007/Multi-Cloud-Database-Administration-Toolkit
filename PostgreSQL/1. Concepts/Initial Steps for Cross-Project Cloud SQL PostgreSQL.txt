@@ -1,0 +1,225 @@
+Cross-Project Cloud SQL PostgreSQL Restore
+
+
+### Step 0 — Prerequisites & IAM Setup
+
+Before touching any `gcloud` command, get all permissions in place.
+
+**Your operator account needs on both projects:**
+```bash
+# On source project
+gcloud projects add-iam-policy-binding SOURCE_PROJECT_ID \
+  --member="user:you@example.com" \
+  --role="roles/cloudsql.admin"
+
+# On target project
+gcloud projects add-iam-policy-binding TARGET_PROJECT_ID \
+  --member="user:you@example.com" \
+  --role="roles/cloudsql.admin"
+```
+
+We also need `roles/storage.admin` on whichever project owns the bucket.
+
+---
+
+### Step 1 — Create the GCS Bucket
+
+The bucket acts as the bridge between the two projects. It can live in either project — the target project is the cleanest choice since the import will happen there.
+
+```bash
+# Create bucket in target project (use same region as both instances for speed)
+gcloud storage buckets create gs://YOUR_BUCKET_NAME \
+  --project=TARGET_PROJECT_ID \
+  --location=REGION \
+  --uniform-bucket-level-access
+```
+
+`--uniform-bucket-level-access` disables per-object ACLs and keeps things clean with pure IAM.
+
+---
+
+### Step 2 — Fetch Both Instance Service Accounts
+
+These are the two machine identities that actually move the data. Fetch them now — you'll need them for the next Step.
+
+```bash
+# Source instance's service account
+SOURCE_SA=$(gcloud sql instances describe SOURCE_INSTANCE_ID \
+  --project=SOURCE_PROJECT_ID \
+  --format='value(serviceAccountEmailAddress)')
+echo "Source SA: $SOURCE_SA"
+
+# Target instance's service account
+TARGET_SA=$(gcloud sql instances describe TARGET_INSTANCE_ID \
+  --project=TARGET_PROJECT_ID \
+  --format='value(serviceAccountEmailAddress)')
+echo "Target SA: $TARGET_SA"
+```
+
+The output will look like `p[PROJECT_NUMBER]-[HASH]@gcp-sa-cloud-sql.iam.gserviceaccount.com`. This is not your account — it is the Cloud SQL service's own identity.
+
+---
+
+### Step 3 — Grant Bucket Access to Both Service Accounts
+
+This is the critical step - The bucket is in the target project, but the source instance's SA (which belongs to the source project) still needs to write to it.
+
+```bash
+# Source SA needs to WRITE the dump file into the bucket
+gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
+  --member="serviceAccount:${SOURCE_SA}" \
+  --role="roles/storage.objectCreator"
+
+# Target SA needs to READ the dump file from the bucket
+gcloud storage buckets add-iam-policy-binding gs://YOUR_BUCKET_NAME \
+  --member="serviceAccount:${TARGET_SA}" \
+  --role="roles/storage.objectViewer"
+```
+
+The bucket is now visible and accessible to both instances across the project boundary. Cloud SQL IAM is evaluated at the bucket level, not the project level — so the source SA in Project A can write to a bucket in Project B as long as it has the role on that specific bucket.
+
+---
+
+### Step 4 — Export from Source Instance
+
+Now run the actual export. Cloud SQL will use the source instance's SA to write the dump file to GCS.
+
+**Option A — SQL dump (portable, human-readable, slower on large DBs):**
+```bash
+gcloud sql export sql SOURCE_INSTANCE_ID \
+  gs://YOUR_BUCKET_NAME/dump.sql \
+  --database=YOUR_DATABASE_NAME \
+  --project=SOURCE_PROJECT_ID
+```
+
+**Option B — BAK format (binary, faster, PostgreSQL-native):**
+```bash
+gcloud sql export bak SOURCE_INSTANCE_ID \
+  gs://YOUR_BUCKET_NAME/dump.bak \
+  --database=YOUR_DATABASE_NAME \
+  --project=SOURCE_PROJECT_ID
+```
+
+**Option C — CSV (selective, per-table):**
+```bash
+gcloud sql export csv SOURCE_INSTANCE_ID \
+  gs://YOUR_BUCKET_NAME/table.csv \
+  --database=YOUR_DATABASE_NAME \
+  --query="SELECT * FROM your_table" \
+  --project=SOURCE_PROJECT_ID
+```
+
+The export runs asynchronously on Cloud SQL's infrastructure — you don't need an open terminal. You can monitor progress in the Cloud SQL console under "Operations" or poll with:
+```bash
+gcloud sql operations list --instance=SOURCE_INSTANCE_ID \
+  --project=SOURCE_PROJECT_ID
+```
+
+---
+
+### Step 5 — Verify the Dump File in GCS
+
+Confirm the file landed correctly before starting the import.
+
+```bash
+gcloud storage ls -l gs://YOUR_BUCKET_NAME/
+```
+
+Check the file size is reasonable (not 0 bytes, not suspiciously small). For SQL dumps you can also do a quick sanity check:
+```bash
+gcloud storage cat gs://YOUR_BUCKET_NAME/dump.sql | head -100
+```
+
+---
+
+### Step 6 — Import into Target Instance
+
+The target instance's SA will now pull the file from the bucket. Your operator account triggers this from the target project.
+
+**For SQL dump:**
+```bash
+gcloud sql import sql TARGET_INSTANCE_ID \
+  gs://YOUR_BUCKET_NAME/dump.sql \
+  --database=TARGET_DATABASE_NAME \
+  --project=TARGET_PROJECT_ID
+```
+
+**For BAK format:**
+```bash
+gcloud sql import bak TARGET_INSTANCE_ID \
+  gs://YOUR_BUCKET_NAME/dump.bak \
+  --database=TARGET_DATABASE_NAME \
+  --project=TARGET_PROJECT_ID \
+  --bak-type=LOGICAL
+```
+
+The import also runs asynchronously. Monitor it:
+```bash
+gcloud sql operations list --instance=TARGET_INSTANCE_ID \
+  --project=TARGET_PROJECT_ID
+```
+
+Or watch until completion:
+```bash
+gcloud sql operations wait OPERATION_ID \
+  --project=TARGET_PROJECT_ID
+```
+
+---
+
+### Step 7 — Post-Import Verification
+
+Once the import completes, verify the data landed correctly before declaring success.
+
+```bash
+# Connect to target via Cloud SQL Auth Proxy
+cloud-sql-proxy TARGET_PROJECT_ID:REGION:TARGET_INSTANCE_ID
+
+# In a new terminal, connect with psql
+psql "host=127.0.0.1 user=postgres dbname=TARGET_DATABASE_NAME"
+```
+
+Then run:
+```sql
+-- Compare row counts for key tables
+SELECT schemaname, relname, n_live_tup
+FROM pg_stat_user_tables
+ORDER BY n_live_tup DESC;
+
+-- Check for objects
+\dt
+\dv
+\df
+```
+
+---
+
+### Step 8 — Cleanup
+
+Once verified, remove the dump file from GCS (it contains your full database — don't leave it sitting there).
+
+```bash
+gcloud storage rm gs://YOUR_BUCKET_NAME/dump.sql
+
+# Optionally delete the bucket entirely if it's no longer needed
+gcloud storage buckets delete gs://YOUR_BUCKET_NAME
+```
+
+---
+
+### Key Gotchas to Keep in Mind
+
+**Database must pre-exist on target.** Cloud SQL's `import sql` does not create the database — you must create it first:
+```bash
+gcloud sql databases create TARGET_DATABASE_NAME \
+  --instance=TARGET_INSTANCE_ID \
+  --project=TARGET_PROJECT_ID
+```
+
+**PostgreSQL versions must match or be compatible.** You cannot import a dump from PostgreSQL 15 into a PostgreSQL 13 instance. The target must be the same version or higher.
+
+**The bucket region matters for performance.** If your bucket is in `us-central1` and your instance is in `asia-south1`, the export/import will be slow and cross-region egress fees apply. Keep bucket, source, and target in the same region when possible.
+
+**The source SA is in Project A but needs bucket access in Project B.** This is perfectly fine — GCS IAM bindings are evaluated on the resource (bucket), not on the project that owns the principal. As long as you've run the `add-iam-policy-binding` command in Step 3, it works cross-project transparently.
+
+**Avoid exporting the `postgres` system database.** It contains system roles and internal metadata that will conflict on the target instance.
