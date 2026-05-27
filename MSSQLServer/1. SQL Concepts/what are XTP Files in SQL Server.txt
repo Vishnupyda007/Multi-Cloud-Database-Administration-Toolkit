@@ -1,0 +1,25 @@
+what are XTP Files in SQL Server
+Copilot said:
+Copilot
+XTP files in SQL Server are related to In-Memory OLTP (Online Transaction Processing), also known as Hekaton. This technology is designed to improve the performance of transaction processing by storing data in memory rather than on disk.
+
+Here are some key points about XTP files:
+
+Types of Files: There are two main types of XTP files:
+
+Data Files: These contain rows that have been inserted into memory-optimized tables.
+Delta Files: These contain references to rows in data files that have been deleted1.
+Checkpoint Files: XTP uses checkpoint files to persist data to disk. These files are managed by the system and include information about the file size, physical location, and transaction ID1.
+
+Memory-Optimized Tables: Data in these tables is stored entirely in memory, which allows for faster data access and transaction processing2.
+
+Performance: XTP aims to reduce the overhead associated with traditional disk-based storage by leveraging the speed of RAM and minimizing locking and latching mechanisms2.
+
+If you have any specific questions about how to use or manage XTP files in SQL Server, feel free to ask!
+
+
+1
+sys.dm_db_xtp_checkpoint_files (Transact-SQL) - SQL Server
+
+2
+Extreme Transaction Processing (XTP, Hekaton) - SQLpassion

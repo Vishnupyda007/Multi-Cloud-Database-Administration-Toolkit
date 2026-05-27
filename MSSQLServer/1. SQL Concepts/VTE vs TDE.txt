@@ -1,0 +1,20 @@
+Virtual Technology Execution (often referred to as Virtualization Technology) and Transparent Data Encryption (TDE) are two distinct concepts in the field of computing and data security.
+
+**Virtual Technology Execution**:
+- It refers to the use of software to create a virtual version of something, such as a hardware platform, operating system, storage device, or network resources.
+- The goal is to manage workloads by radically transforming traditional computing to make it more scalable.
+- It allows multiple operating systems and applications to run on the same physical machine by sharing the underlying hardware resources.
+
+**Transparent Data Encryption (TDE)**:
+- TDE is a method of encrypting data at rest, meaning it encrypts the data files on the disk.
+- It is called "transparent" because it does not require changes to the existing applications to encrypt the database files¹.
+- TDE performs real-time I/O encryption and decryption of the data at the page level. Each page is decrypted when read into memory and then encrypted before being written to disk4.
+- It is primarily used to protect data by ensuring that database files are encrypted and cannot be read without the proper encryption keys¹.
+
+In summary, Virtual Technology Execution is about creating virtual environments for running multiple systems and applications on a single set of hardware, while Transparent Data Encryption is focused on protecting data by encrypting it as it is stored to disk. They serve different purposes and are used in different contexts within IT infrastructure and data security.
+
+Source: Conversation with Copilot, 8/8/2024
+(1) Transparent data encryption (TDE) - SQL Server | Microsoft Learn. https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption?view=sql-server-ver16.
+(2) Transparent data encryption - Azure SQL Database & Azure SQL Managed .... https://learn.microsoft.com/en-us/azure/azure-sql/database/transparent-data-encryption-tde-overview?view=azuresql.
+(3) Understanding and Selecting Transparent Data Encryption: Native vs .... http://enterprise-encryption.vormetric.com/rs/vormetric/images/Vormetric_TDE_WP__v10.pdf.
+(4) Transparent Data Encryption Frequently Asked Questions - Oracle. https://www.oracle.com/database/technologies/faq-tde.html.

@@ -1,0 +1,26 @@
+master > sql server configuration & file locs of user dbs, msdb> sql server agent > jobs& alert and also backup & restore history of dbs, model > is a template for creeating db  and tempdb > temporary tables, views  created by user > temporary files storage wont be there u cant backup too.
+
+
+> create procedure SP_whosisactive > it can give result
+
+> function > only input parameter> mandatory to give result 
+
+> triggers> is special sp, it is executed automatically when you an db, sql server events.
+
+
+> dcl > grant, revoke, deny
+
+> tcl > rollback
+
+> ddl > create, alter, drop, trucate
+
+> dml> select, insert, update, delete
+
+> xp_fixeddrives > to disk size
+
+> sp_helpdb > to get db size
+
+> sp_helptext SP_name or func or trigger > sp_helptext sp_helpdb
+
+> sp_whoisactive
+

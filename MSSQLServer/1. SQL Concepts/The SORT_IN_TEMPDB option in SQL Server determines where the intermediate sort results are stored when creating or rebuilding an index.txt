@@ -1,0 +1,25 @@
+what is sort in tempdb on or off
+Copilot said:
+Copilot
+The SORT_IN_TEMPDB option in SQL Server determines where the intermediate sort results are stored when creating or rebuilding an index:
+
+SORT_IN_TEMPDB = ON:
+
+Intermediate Sort Storage: Uses the tempdb database.
+Benefits: Can reduce the time required to create or rebuild an index if tempdb is on a different set of disks than the user database1.
+Considerations: Requires sufficient free space in tempdb to store the sort runs1.
+SORT_IN_TEMPDB = OFF (default):
+
+Intermediate Sort Storage: Uses the destination filegroup of the user database.
+Benefits: Reduces the need for additional space in tempdb.
+Considerations: Requires sufficient free space in the destination filegroup to store the final table and index structure1.
+Choosing between these options depends on your specific environment and resource availability. If tempdb is on a separate, faster disk, using SORT_IN_TEMPDB = ON might improve performance. However, if tempdb is on the same disk as the user database or has limited space, it might be better to leave it off2.
+
+Do you have a specific scenario in mind where you're considering using this option?
+
+
+1
+SORT_IN_TEMPDB Option For Indexes - SQL Server
+
+2
+sql server - When to use sort_in_tempdb when rebuilding indexes ...

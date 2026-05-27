@@ -1,0 +1,31 @@
+what are the types of deployment for SSIS jobs ?
+Copilot said:
+Copilot
+There are two primary deployment models for SQL Server Integration Services (SSIS) jobs:
+
+Project Deployment Model:
+
+Unit of Deployment: The entire project.
+Deployment Location: SSISDB catalog on an instance of SQL Server.
+Features: Uses parameters to assign values to package properties, and environment-specific parameter values are stored in environment variables.
+Introduced: SQL Server 2012.
+Incremental Deployment: SQL Server 2016 introduced the ability to deploy individual packages without deploying the whole project1.
+Package Deployment Model:
+
+Unit of Deployment: Individual packages.
+Deployment Location: File system or msdb database on an instance of SQL Server.
+Features: Uses configurations to assign values to package properties, and environment-specific configuration values are stored in configuration files.
+Legacy Model: This is the older model compared to the project deployment model1.
+You can also automate and schedule the execution of SSIS packages using SQL Server Agent, which allows you to create jobs that can run at specified times or intervals2.
+
+Is there a specific deployment model you're interested in, or do you have any other questions about SSIS?
+
+
+
+1
+Deploy Integration Services (SSIS) Projects and Packages
+
+2
+SQL Server Agent Jobs for Packages - SQL Server Integration Services ...
+
+SSIS job deployment types
