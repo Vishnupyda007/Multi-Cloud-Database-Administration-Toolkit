@@ -1,0 +1,36 @@
+-- Combined query for data files and log file space usage with total size of database in GB
+WITH DataFiles AS (
+    SELECT 
+        CAST(SUM(unallocated_extent_page_count) * 1.0 / 128 AS DECIMAL(10, 3)) AS [Free space(MB)],
+        CAST(SUM(version_store_reserved_page_count) * 1.0 / 128 AS DECIMAL(10, 3)) AS 
+		[Used Space by VersionStore(MB)],
+        CAST(SUM(internal_object_reserved_page_count) * 1.0 / 128 AS DECIMAL(10, 3)) AS [Used Space by InternalObjects(MB)],
+        CAST(SUM(user_object_reserved_page_count) * 1.0 / 128 AS DECIMAL(10, 3)) AS 
+		[Used Space by UserObjects(MB)],
+        CAST(SUM(unallocated_extent_page_count + version_store_reserved_page_count + internal_object_reserved_page_count + user_object_reserved_page_count) * 1.0 / 128 AS DECIMAL(10, 3)) AS [Total data file Size of tempdb(MB)]
+    FROM 
+        tempdb.sys.dm_db_file_space_usage with(nolock)
+),
+LogFiles AS (
+    SELECT 
+        CAST(total_log_size_in_bytes / 1024.0 / 1024 AS DECIMAL(10, 3)) AS [Total Log Size(MB)],
+        CAST(used_log_space_in_bytes / 1024.0 / 1024 AS DECIMAL(10, 3)) AS [Used Log Space(MB)],
+        CAST((total_log_size_in_bytes - used_log_space_in_bytes) / 1024.0 / 1024 AS DECIMAL(10, 3)) AS [Free Log Space(MB)]
+    FROM 
+        sys.dm_db_log_space_usage with(nolock)
+)
+SELECT 
+    @@SERVERNAME AS ServerName,
+    df.[Free space(MB)],
+    df.[Used Space by VersionStore(MB)],
+    df.[Used Space by InternalObjects(MB)],
+    df.[Used Space by UserObjects(MB)],
+    df.[Total data file Size of tempdb(MB)],
+    lf.[Total Log Size(MB)],
+    lf.[Used Log Space(MB)],
+    lf.[Free Log Space(MB)],
+    CAST(df.[Total data file Size of tempdb(MB)] + lf.[Total Log Size(MB)] AS DECIMAL(10, 3)) AS [Total TempDB Size(MB)],
+    CAST((df.[Total data file Size of tempdb(MB)] + lf.[Total Log Size(MB)]) / 1024 AS DECIMAL(10, 3)) AS [Total TempDB Size(GB)]
+FROM 
+    DataFiles df with(nolock)
+    CROSS JOIN LogFiles lf with(nolock);

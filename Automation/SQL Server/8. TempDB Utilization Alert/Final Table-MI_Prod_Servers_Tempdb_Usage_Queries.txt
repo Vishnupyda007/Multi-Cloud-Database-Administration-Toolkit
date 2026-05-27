@@ -1,0 +1,20 @@
+CREATE TABLE [dbo].[MI_Prod_Servers_Tempdb_Usage_Queries](
+    [Servername] [nvarchar](200) not NULL,
+    [session_id] INT,
+	[login_name] NVARCHAR(128),
+    [host_name] NVARCHAR(128),
+	[program_name] NVARCHAR(128),
+	[database_name] NVARCHAR(128),
+	[status] NVARCHAR(30),
+	tempdb_user_alloc_pages int,
+	tempdb_internal_alloc_pages int,
+	tempdb_alloc_mb int,
+	tempdb_user_current_pages int,
+	tempdb_internal_current_pages int,
+	tempdb_current_mb int,
+	total_pages_allocated int,
+	query_start_time DATETIME2(3),
+	query_runtime_seconds VARCHAR(50),
+	query_text nvarchar(max)
+) ON [PRIMARY]
+GO

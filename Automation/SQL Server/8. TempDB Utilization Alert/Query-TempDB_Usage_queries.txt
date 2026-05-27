@@ -1,0 +1,48 @@
+-- Step 1: Create a temporary table in tempdb to store the output
+CREATE TABLE tempdb..#WhoIsActiveOutput (
+    [RunTime] NVARCHAR(30),
+    [start_time] datetime,
+    [session_id] INT,
+    [sql_text] XML, -- Change to XML to match the data type
+    [status] NVARCHAR(30),
+    [wait_info] NVARCHAR(256),
+    [tempdb_Allocations] NVARCHAR(30), 
+    [tempdb_current] NVARCHAR(30),
+    [reads] NVARCHAR(500),
+    [writes] NVARCHAR(500),
+    [login_name] NVARCHAR(128),
+    [host_name] NVARCHAR(128),
+    [database_name] NVARCHAR(128),
+    [program_name] NVARCHAR(128)
+);
+
+-- Step 2: Insert the output of sp_whoisactive into the temporary table
+EXEC sp_whoisactive 
+    @sort_order = '[tempdb_current] DESC',
+    @get_transaction_info = 1,
+    @show_sleeping_spids = 0,
+    @output_column_list = '[dd hh:mm:ss.mss][start_time][session_id][sql_text][status][wait_info][IO][temp%][reads][writes][login_name][host_name][database_name][program_name]',
+    @destination_table = 'tempdb..#WhoIsActiveOutput';
+
+-- Step 3: Select from the temporary table and add the server name
+SELECT 
+    @@SERVERNAME AS ServerName,
+    CAST([RunTime] AS NVARCHAR(30)) AS [RunTime],
+    CAST([start_time] AS NVARCHAR(30)) AS [start_time],
+    [session_id],
+    CONVERT(NVARCHAR(MAX), [sql_text].value('.', 'NVARCHAR(MAX)')) AS [sql_text], -- Explicit conversion from XML to NVARCHAR(MAX)
+    [status],
+    [wait_info],
+    [tempdb_Allocations],
+    [tempdb_current],
+    TRY_CAST([reads] AS BIGINT) AS [reads], -- Use TRY_CAST to safely convert to BIGINT
+    TRY_CAST([writes] AS BIGINT) AS [writes], -- Use TRY_CAST to safely convert to BIGINT
+    [login_name],
+    [host_name],
+    [database_name],
+    [program_name]
+FROM 
+    tempdb..#WhoIsActiveOutput;
+
+-- Clean up the temporary table
+DROP TABLE tempdb..#WhoIsActiveOutput;

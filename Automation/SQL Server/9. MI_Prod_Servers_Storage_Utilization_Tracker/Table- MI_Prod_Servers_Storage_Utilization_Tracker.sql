@@ -1,0 +1,18 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[MI_Prod_Servers_Storage_Utilization_Tracker]    Script Date: 1/16/2025 3:09:36 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[MI_Prod_Servers_Storage_Utilization_Tracker](
+	[Servername] [nvarchar](200) NULL,
+	[Total_TB] [char](10) NULL,
+	[Used_TB] [decimal](9, 3) NULL,
+	[Available_GB] [decimal](9, 3) NULL,
+	[Percent] [int] NULL
+) ON [PRIMARY]
+GO

@@ -1,0 +1,24 @@
+USE [DBAdmin]
+GO
+
+/****** Object:  Table [dbo].[MI_Prod_Servers_Tempdb_Utilization]    Script Date: 2/22/2025 1:53:16 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[MI_Prod_Servers_Tempdb_Utilization](
+	[Servername] [nvarchar](200) not NULL,
+	[Free_space(MB)] int NULL,
+	[Used_Space_by_VersionStore(MB)] int NULL,
+	[Used_Space_by_InternalObjects(MB)] int NOT NULL,
+	[Used_Space_by_UserObjects(MB)] int NOT NULL,
+	[Total_data_file_Size_of_tempdb(MB)] int NOT NULL,
+	[Total_Log_Size(MB)] int not null,
+	[Used_Log_Space(MB)] int not null,
+	[Free_Log_Space(MB)] int not null,
+	[Total_TempDB_Size(MB)] int not null,
+	[Total_TempDB_Size(GB)] int not null,
+) ON [PRIMARY]
+GO

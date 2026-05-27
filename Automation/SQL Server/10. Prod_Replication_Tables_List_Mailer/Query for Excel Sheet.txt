@@ -1,0 +1,6 @@
+CREATE Table 'EDSDEVRepli' (
+'Publication' varchar(150),
+'Article' varchar(150),
+'SubsriberServer' varchar(150),
+'DestinationDB' varchar(150)
+)

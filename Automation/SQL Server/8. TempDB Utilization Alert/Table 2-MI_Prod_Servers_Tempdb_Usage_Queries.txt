@@ -1,0 +1,18 @@
+CREATE TABLE [dbo].[MI_Prod_Servers_Tempdb_Usage_Queries](
+    [Servername] [nvarchar](200) not NULL,
+    [RunTime] NVARCHAR(30),
+    [start_time] DATETIME,
+    [session_id] INT,
+    [sql_text] XML, -- Change to XML to match the data type
+    [status] NVARCHAR(30),
+    [wait_info] NVARCHAR(256),
+    [tempdb_Allocations] NVARCHAR(30), 
+    [tempdb_current] NVARCHAR(30),
+    [reads] BIGINT,
+    [writes] BIGINT,
+    [login_name] NVARCHAR(128),
+    [host_name] NVARCHAR(128),
+    [database_name] NVARCHAR(128),
+    [program_name] NVARCHAR(128)
+) ON [PRIMARY]
+GO

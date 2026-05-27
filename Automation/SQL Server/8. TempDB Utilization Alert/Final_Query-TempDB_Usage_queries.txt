@@ -1,0 +1,36 @@
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+SELECT TOP 10 
+    @@SERVERNAME AS ServerName,
+    s.session_id,
+    s.login_name,
+    s.host_name,
+    s.program_name,
+    s.status,
+    DB_NAME(r.database_id) AS current_database,
+    (tsu.user_objects_alloc_page_count + tsu.internal_objects_alloc_page_count) * 8 / 1024 AS tempdb_alloc_mb,
+    -- Tempdb Current (net pages currently in use: alloc - dealloc)
+    ((tsu.user_objects_alloc_page_count - tsu.user_objects_dealloc_page_count) +
+     (tsu.internal_objects_alloc_page_count - tsu.internal_objects_dealloc_page_count)) * 8 / 1024 AS tempdb_current_mb,
+    -- Query Timing
+    r.start_time AS query_start_time,
+    -- Convert seconds to DD:HH:MM:SS format
+    CONVERT(VARCHAR, DATEDIFF(SECOND, r.start_time, GETDATE()) / 86400) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, (DATEDIFF(SECOND, r.start_time, GETDATE()) % 86400) / 3600), 2) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, (DATEDIFF(SECOND, r.start_time, GETDATE()) % 3600) / 60), 2) + ':' +
+    RIGHT('0' + CONVERT(VARCHAR, DATEDIFF(SECOND, r.start_time, GETDATE()) % 60), 2) AS query_runtime_formatted
+FROM
+    sys.dm_exec_sessions s WITH(NOLOCK)
+    INNER JOIN sys.dm_db_task_space_usage tsu WITH(NOLOCK) ON s.session_id = tsu.session_id
+    INNER JOIN sys.dm_exec_requests r WITH(NOLOCK) ON s.session_id = r.session_id
+    CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) t
+    CROSS APPLY sys.dm_exec_query_plan(r.plan_handle) qp
+WHERE
+    (tsu.user_objects_alloc_page_count + tsu.internal_objects_alloc_page_count) > 0 
+-- total_pages_allocated
+    AND (tsu.user_objects_alloc_page_count - tsu.user_objects_dealloc_page_count) + 
+        (tsu.internal_objects_alloc_page_count - tsu.internal_objects_dealloc_page_count) > 0 
+-- tempdb_current_mb
+ORDER BY
+    (tsu.user_objects_alloc_page_count + tsu.internal_objects_alloc_page_count) DESC; 
+--total_Pages_Allocated
