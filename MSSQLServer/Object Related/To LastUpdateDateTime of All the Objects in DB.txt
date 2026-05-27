@@ -1,0 +1,39 @@
+SELECT
+o.name AS ObjectName,
+    o.type_desc AS ObjectType,
+    MAX(us.last_user_update) AS LastUpdatedDateTime
+FROM
+    sys.objects o
+JOIN
+    sys.dm_db_index_usage_stats us
+ON
+    o.object_id = us.object_id
+WHERE
+    us.database_id = DB_ID()  -- Ensure it only checks the current database
+GROUP BY
+o.name, o.type_desc
+ORDER BY
+    LastUpdatedDateTime DESC;
+
+
+
+---------------------------------------------------
+
+
+SELECT
+    t.name AS TableName,
+    s.name AS SchemaName,
+    p.rows AS RowCounts,
+    us.last_user_update AS LastUserUpdate
+FROM
+    sys.tables AS t
+INNER JOIN
+    sys.schemas AS s ON t.schema_id = s.schema_id
+INNER JOIN
+    sys.partitions AS p ON t.object_id = p.object_id AND p.index_id IN (0, 1)
+LEFT JOIN
+    sys.dm_db_index_usage_stats AS us ON t.object_id = us.object_id AND us.database_id = DB_ID()
+WHERE
+    t.is_ms_shipped = 0  -- Exclude system tables
+ORDER BY
+    us.last_user_update DESC;

@@ -1,0 +1,27 @@
+------To get Jobs Enabled List------
+
+use msdb
+select job.name, job.enabled,step.step_name,step.step_id,step.command from sysjobs job inner join sysjobsteps step on job.job_id=step.job_id
+
+order by job.name
+
+
+-----best one------------
+
+USE msdb;
+
+SELECT 
+    job.name, 
+    job.enabled,
+    step.step_id,
+    step.command,
+    'exec msdb..sp_update_job @job_name = ''' + job.name + ''', @enabled = 1' AS update_command
+FROM 
+    sysjobs job 
+INNER JOIN 
+    sysjobsteps step 
+    ON job.job_id = step.job_id
+WHERE 
+    job.enabled = 1
+ORDER BY 
+    job.name;

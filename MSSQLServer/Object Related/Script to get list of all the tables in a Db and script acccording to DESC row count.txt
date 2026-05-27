@@ -1,0 +1,31 @@
+>>>>>>>>to get list of all the tables in a db<<<<<<<<<<<
+
+USE YourDatabaseName;  -- Replace YourDatabaseName with the actual name of your database 
+ 
+SELECT table_name = t.name
+FROM sys.tables t
+INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+ORDER BY t.name;
+
+
+
+
+>>>>>>>>>>>>>>>>>to get list of tables in a db DESC with row count<<<<<<<<<<<<<<<<<<<
+
+USE YourDatabaseName; -- Replace with your actual database name  
+ 
+SELECT
+t.name AS TableName,
+    SUM(p.rows) AS [RowCount]
+FROM
+    sys.tables t
+INNER JOIN
+    sys.indexes i ON t.object_id = i.object_id
+INNER JOIN
+    sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
+WHERE
+    i.index_id <= 1  -- 0:Heap, 1:Clustered Index
+GROUP BY
+t.name
+ORDER BY
+    [RowCount] DESC;

@@ -1,0 +1,5 @@
+select * from sys.objects
+
+
+-----
+selec * from sys.sysobjects

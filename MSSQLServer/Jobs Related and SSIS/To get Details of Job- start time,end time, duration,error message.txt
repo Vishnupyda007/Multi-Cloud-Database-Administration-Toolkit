@@ -1,0 +1,73 @@
+------------To get the job last run details along with duration(hours, minutes&seconds) and error message if the jobs fails----------------
+
+USE msdb
+go
+WITH LastRun AS (
+    SELECT DISTINCT
+        job_id,
+        MAX(msdb.dbo.agent_datetime(run_date, run_time)) AS LastRunTime
+    FROM 
+        msdb.dbo.sysjobhistory
+    GROUP BY 
+        job_id
+)
+SELECT DISTINCT
+    j.name AS JobName,
+    msdb.dbo.agent_datetime(h.run_date, h.run_time) AS StartTime,
+    DATEADD(SECOND, h.run_duration % 100 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration / 10000) * 3600, 
+            msdb.dbo.agent_datetime(h.run_date, h.run_time)) AS EndTime,
+    (h.run_duration / 10000) AS DurationHours,
+    ((h.run_duration / 100) % 100) AS DurationMinutes,
+    (h.run_duration % 100) AS DurationSeconds,
+    CASE 
+        WHEN h.run_status <> 1 THEN h.message
+        ELSE 'No Error'
+    END AS ErrorMessage
+FROM 
+    msdb.dbo.sysjobs j
+INNER JOIN 
+    msdb.dbo.sysjobhistory h ON j.job_id = h.job_id
+LEFT JOIN 
+    msdb.dbo.sysjobsteps s ON h.job_id = s.job_id AND h.step_id = s.step_id
+INNER JOIN 
+    LastRun lr ON h.job_id = lr.job_id AND msdb.dbo.agent_datetime(h.run_date, h.run_time) = lr.LastRunTime
+WHERE 
+    j.enabled = 1 -- Only enabled jobs
+	--and j.name in ('DE_ISpace_UserAccessDetailsDailyBatchJob')
+ORDER BY 
+    StartTime DESC;
+
+
+
+
+
+
+------To get job run details along with duration in minutes for a specific date and Error message if the job fails at any step----
+
+USE msdb
+go
+SELECT distinct
+    j.name AS JobName,
+    msdb.dbo.agent_datetime(h.run_date, h.run_time) AS StartTime,
+    DATEADD(SECOND, h.run_duration % 100 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration / 10000) * 3600, 
+            msdb.dbo.agent_datetime(h.run_date, h.run_time)) AS EndTime,
+    (h.run_duration % 100 + ((h.run_duration / 100) % 100) * 60 + (h.run_duration / 10000) * 3600) / 60 AS DurationInMinutes,
+    CASE 
+        WHEN h.run_status <> 1 THEN h.message
+        ELSE 'NoError'
+    END AS ErrorMessage
+FROM 
+    msdb.dbo.sysjobs j
+INNER JOIN 
+    msdb.dbo.sysjobhistory h ON j.job_id = h.job_id
+LEFT JOIN 
+    msdb.dbo.sysjobsteps s ON h.job_id = s.job_id AND h.step_id = s.step_id
+WHERE 
+    h.run_date = CONVERT(INT, CONVERT(VARCHAR, GETDATE(), 112)) -- Replace with your specific date in YYYYMMDD format, Replace CONVERT(INT, CONVERT(VARCHAR, GETDATE(), 112)) with the specific date you are interested in, formatted as YYYYMMDD
+
+    AND j.enabled = 1 -- Only enabled jobs
+	and j.name in ('DE_ISpace_UserAccessDetailsDailyBatchJob'
+)
+ORDER BY 
+    StartTime DESC;
+

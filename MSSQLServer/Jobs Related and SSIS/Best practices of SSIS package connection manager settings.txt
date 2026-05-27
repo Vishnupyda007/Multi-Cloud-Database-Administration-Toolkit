@@ -1,0 +1,24 @@
+SSIS package configuration (good to have these configs).   
+
+Connection String:
+ConnectionRetryCount – 3/4
+ConnectRetryInterval – 15/20
+Connect Timeout - 0
+MultiSubnetfailover - ?(True) @Syed, Vaseem Anwar (Cognizant) to confirm 
+
+Data flow task Properties: 
+DelayValidation - True
+AutoAdjustBufferSize - True
+
+Enable Retry option in Job step. 
+
+
+----
+
+You can enable below options in SSIS package for better performance.
+1)	Modifications in Connection 
+
+ConnectionRetryCount – 4
+ConnectRetryInterval     – 15
+Connect Timeout            – 0
+MultiSubnetfailover       – True(https://learn.microsoft.com/en-us/sql/database-engine/availability-groups/windows/listeners-client-connectivity-application-failover?view=sql-server-ver16)

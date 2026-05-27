@@ -1,0 +1,21 @@
+EXECUTE dbo.IndexOptimize
+@Databases = 'CentralRepository_Report',
+@FragmentationLow = NULL,
+@FragmentationMedium = NULL,
+@FragmentationHigh = NULL,
+@UpdateStatistics = 'ALL',
+@OnlyModifiedStatistics = 'Y'
+
+
+
+
+-----for all the DBs in the server----------
+
+
+EXECUTE dbo.IndexOptimize
+@Databases = 'USER_DATABASES',
+@FragmentationLow = NULL,
+@FragmentationMedium = NULL,
+@FragmentationHigh = NULL,
+@UpdateStatistics = 'ALL',
+@OnlyModifiedStatistics = 'Y'

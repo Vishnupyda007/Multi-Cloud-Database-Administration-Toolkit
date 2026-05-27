@@ -1,0 +1,43 @@
+USE msdb;
+GO
+
+SELECT 
+    j.name AS JobName,
+    ja.start_execution_date AS StartDate,
+    ISNULL(ja.stop_execution_date, GETDATE()) AS EndDate,
+    DATEDIFF(SECOND, ja.start_execution_date, ISNULL(ja.stop_execution_date, GETDATE())) AS Duration,
+    CASE 
+        WHEN ja.stop_execution_date IS NULL THEN 'Running'
+        ELSE 'Completed'
+    END AS Status
+FROM 
+    sysjobs j
+INNER JOIN 
+    sysjobactivity ja ON j.job_id = ja.job_id
+WHERE 
+    ja.start_execution_date IS NOT NULL
+    AND ja.stop_execution_date IS NULL;
+
+
+
+
+
+
+-------------------- OR ---------------------------------
+
+SELECT 
+    sj.name AS JobName,
+    sja.start_execution_date AS StartTime,
+    ISNULL(sja.stop_execution_date, GETDATE()) AS CurrentTime,
+    DATEDIFF(SECOND, sja.start_execution_date, ISNULL(sja.stop_execution_date, GETDATE())) AS DurationSeconds,
+    sja.run_requested_source AS StatusMessage
+FROM 
+    msdb.dbo.sysjobs sj
+JOIN 
+    msdb.dbo.sysjobactivity sja ON sj.job_id = sja.job_id
+WHERE 
+    sja.start_execution_date IS NOT NULL
+    AND sja.stop_execution_date IS NULL;
+
+
+

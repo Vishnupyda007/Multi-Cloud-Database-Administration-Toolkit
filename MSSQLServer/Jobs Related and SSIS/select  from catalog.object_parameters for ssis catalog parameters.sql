@@ -1,0 +1,1 @@
+select * from catalog.object_parameters where project_id=4

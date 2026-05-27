@@ -1,0 +1,13 @@
+SELECT 
+    t.name AS TableName,
+    c.name AS ConstraintName,
+    c.type_desc AS ConstraintType,
+    OBJECT_DEFINITION(c.object_id) AS DDL
+FROM 
+    sys.tables t
+    INNER JOIN sys.objects c ON t.object_id = c.parent_object_id
+WHERE 
+    t.name IN ('tbl_WA_ResponseTransactions_0_Archive', 'YourTableName2') -- Replace with your table names
+    AND c.type IN ('PK', 'F', 'UQ', 'C')
+ORDER BY 
+    t.name, c.name;

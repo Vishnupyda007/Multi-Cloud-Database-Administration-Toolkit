@@ -1,0 +1,11 @@
+
+--Execute a specific SQL Server Agent job by its name
+EXEC msdb.dbo.sp_start_job @job_name = 'YourJobName';
+
+
+
+-- Execute multiple SQL Server Agent jobs
+EXEC msdb.dbo.sp_start_job @job_name = 'JobName1';
+EXEC msdb.dbo.sp_start_job @job_name = 'JobName2';
+EXEC msdb.dbo.sp_start_job @job_name = 'JobName3';
+

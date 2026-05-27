@@ -1,0 +1,3 @@
+select [schema_id], min(create_date) create_date
+ from sys.all_objects with (nolock)
+ group by [schema_id]

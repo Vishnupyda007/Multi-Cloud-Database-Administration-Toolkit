@@ -1,0 +1,8 @@
+--------to get query_id for the Object name or Object ID------------
+
+
+SELECT q.query_id, t.query_sql_text, object_name(q.object_id) AS parent_object 
+  FROM sys.query_store_query_text t JOIN sys.query_store_query q
+   ON t.query_text_id = q.query_text_id 
+  WHERE t.query_sql_text LIKE  N'%insert %db_store%'
+        OR object_name(q.object_id) = 'usp_get_PartialRoutedRoutes' 

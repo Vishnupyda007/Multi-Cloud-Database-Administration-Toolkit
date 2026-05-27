@@ -1,0 +1,53 @@
+SELECT 
+    referencing_object_name = OBJECT_NAME(d.referencing_id),
+    referenced_object_name = OBJECT_NAME(d.referenced_id),
+    referenced_object_type = o.type_desc
+FROM 
+    sys.sql_expression_dependencies AS d
+JOIN 
+    sys.objects AS o ON d.referenced_id = o.object_id
+WHERE 
+    OBJECT_NAME(d.referencing_id) = 'NikePMO_Allocation';
+
+
+
+--------------------------- if i get view as referenced object, 
+then i should also get table object of this referenced view object-------------
+
+
+-- Step 1: Get initial dependencies
+WITH InitialDependencies AS (
+    SELECT 
+        referencing_object_name = OBJECT_NAME(d.referencing_id),
+        referenced_object_name = OBJECT_NAME(d.referenced_id),
+        referenced_object_type = o.type_desc
+    FROM 
+        sys.sql_expression_dependencies AS d
+    JOIN 
+        sys.objects AS o ON d.referenced_id = o.object_id
+    WHERE 
+        OBJECT_NAME(d.referencing_id) IN ('EAS_Associates', 'EAS_RMG_RR_Ops')
+),
+
+-- Step 2: Get dependencies of referenced views
+ViewDependencies AS (
+    SELECT 
+        referencing_object_name = OBJECT_NAME(d.referencing_id),
+        referenced_object_name = OBJECT_NAME(d.referenced_id),
+        referenced_object_type = o.type_desc
+    FROM 
+        sys.sql_expression_dependencies AS d
+    JOIN 
+        sys.objects AS o ON d.referenced_id = o.object_id
+    WHERE 
+        OBJECT_NAME(d.referencing_id) IN (
+            SELECT referenced_object_name 
+            FROM InitialDependencies 
+            WHERE referenced_object_type = 'VIEW'
+        )
+)
+
+-- Final result: Combine both levels
+SELECT * FROM InitialDependencies
+UNION ALL
+SELECT * FROM ViewDependencies;

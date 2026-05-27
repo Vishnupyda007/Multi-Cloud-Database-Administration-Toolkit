@@ -1,0 +1,40 @@
+Best practices of SSIS package connection manager settings and other best practices in the package settings and properties
+
+Here are some best practices for SSIS package connection manager settings and other package settings and properties:
+
+Connection Manager Settings
+Use Project-Level Connection Managers: Define connection managers at the project level rather than the package level to ensure consistency and ease of maintenance1.
+Parameterize Connection Strings: Use parameters for connection strings to make your packages more flexible and easier to deploy across different environments2.
+Set the Application Name: Add an "Application Name" property to your connection strings to easily identify which SSIS package is executing queries in SQL Profiler3.
+Use Integrated Security: Prefer integrated security (Windows Authentication) over SQL Server authentication to avoid storing credentials in the package3.
+Validate Connections: Enable the DelayValidation property to True for connection managers to avoid validation errors during package design4.
+Package Settings and Properties
+Checkpoints: Use checkpoints to allow packages to restart from the point of failure, which can save time during re-execution4.
+Logging: Implement comprehensive logging to capture detailed information about package execution, which helps in troubleshooting and performance tuning5.
+Isolation Levels: Adjust transaction isolation levels to prevent locking and reduce contention in the source database6.
+MaxConcurrentExecutables: Set the MaxConcurrentExecutables property to optimize parallel execution of tasks within the package4.
+DelayValidation: Set the DelayValidation property to True for tasks and containers that do not need to be validated at the start of package execution4.
+Performance Optimization
+Indexing: Ensure that source tables have appropriate indexes to support the queries being run in SSIS packages6.
+Data Flow Optimization: Use the FastParse option for data flow components to improve performance when dealing with large datasets6.
+Buffer Size: Adjust the buffer size and buffer count properties to optimize memory usage during data flow operations6.
+By following these best practices, you can enhance the performance, maintainability, and reliability of your SSIS packages. If you have any specific scenarios or further questions, feel free to ask!
+
+
+1
+Integration Services (SSIS) Connections - SQL Server Integration ...
+
+2
+Integration Services (SSIS) Package and Project Parameters
+
+3
+SSIS Connection Manager Tips and Tricks - MSSQLTips.com - SQL Server Tips
+
+4
+Set Package Properties - SQL Server Integration Services (SSIS)
+
+5
+SSIS Package Configuration - MSSQLTips.com - SQL Server Tips
+
+6
+Optimizing SSIS Packages for Pe

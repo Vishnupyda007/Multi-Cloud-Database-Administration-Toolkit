@@ -1,0 +1,35 @@
+---------------column count----------
+SELECT [Schema] = s.name
+    , [Table] = t.name
+    , number = COUNT(*), s.Name+'.'+t.Name	as Tablename
+FROM sys.columns c
+INNER JOIN sys.tables t ON c.object_id = t.object_id
+INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+GROUP BY t.name, s.name
+order by Tablename
+
+--------------------Row Count with table size------------------
+
+SELECT
+ s.Name+'.'+t.Name								as TabeleNameSchema,	
+  t.Name                                       AS TableName,
+  s.Name                                       AS SchemaName,
+  p.Rows                                       AS RowCounts,
+  SUM(a.total_pages) * 8                       AS TotalSpaceKB,
+  SUM(a.used_pages) * 8                        AS UsedSpaceKB,
+  (SUM(a.total_pages) - SUM(a.used_pages)) * 8 AS UnusedSpaceKB
+FROM
+  sys.tables t
+  INNER JOIN sys.indexes i ON t.object_id = i.object_id
+  INNER JOIN sys.partitions p ON i.object_id = p.object_id AND i.index_id = p.index_id
+  INNER JOIN sys.allocation_units a ON p.partition_id = a.container_id
+  LEFT OUTER JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE
+  t.Name NOT LIKE 'dt%'
+  AND t.is_ms_shipped = 0
+  AND i.object_id > 255
+GROUP BY
+  t.Name, s.Name, p.Rows
+ORDER BY
+ TabeleNameSchema;
+GO

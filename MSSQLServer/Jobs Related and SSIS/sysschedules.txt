@@ -1,0 +1,5 @@
+SELECT * FROM 
+MSDB.dbo.sysschedules ss
+INNER JOIN msdb.dbo.sysjobschedules jss
+   ON jss.schedule_id = ss.schedule_id
+WHERE ss.enabled = 1

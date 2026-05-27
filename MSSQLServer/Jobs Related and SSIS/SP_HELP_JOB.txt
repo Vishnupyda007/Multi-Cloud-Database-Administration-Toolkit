@@ -1,0 +1,1 @@
+SP_HELP_JOB @job_name = 'JOBNAME'

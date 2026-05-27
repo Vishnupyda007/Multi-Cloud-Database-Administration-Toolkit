@@ -1,0 +1,64 @@
+-- ============================================================
+-- SQL Server Agent Job — Average Run Time (Last 1 Month)
+-- ============================================================
+
+SELECT
+    j.name                                              AS job_name,
+    COUNT(*)                                            AS total_runs,
+    SUM(CASE WHEN h.run_status = 1 THEN 1 ELSE 0 END)  AS successful_runs,
+    SUM(CASE WHEN h.run_status <> 1 THEN 1 ELSE 0 END) AS failed_runs,
+
+    -- Convert run_duration from HHMMSS integer to total seconds
+    AVG(
+        (h.run_duration / 10000) * 3600 +          -- hours
+        ((h.run_duration % 10000) / 100) * 60 +    -- minutes
+        (h.run_duration % 100)                      -- seconds
+    )                                               AS avg_duration_seconds,
+
+    -- Human-readable average duration
+    CONVERT(VARCHAR(8),
+        DATEADD(SECOND,
+            AVG(
+                (h.run_duration / 10000) * 3600 +
+                ((h.run_duration % 10000) / 100) * 60 +
+                (h.run_duration % 100)
+            ),
+        '00:00:00'),
+    108)                                            AS avg_duration_hh_mm_ss,
+
+    -- Min / Max duration in seconds
+    MIN(
+        (h.run_duration / 10000) * 3600 +
+        ((h.run_duration % 10000) / 100) * 60 +
+        (h.run_duration % 100)
+    )                                               AS min_duration_seconds,
+
+    MAX(
+        (h.run_duration / 10000) * 3600 +
+        ((h.run_duration % 10000) / 100) * 60 +
+        (h.run_duration % 100)
+    )                                               AS max_duration_seconds,
+
+    -- Last run info
+    MAX(
+        CONVERT(DATETIME,
+            CONVERT(VARCHAR, h.run_date) + ' ' +
+            STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR, h.run_time), 6), 5, 0, ':'), 3, 0, ':')
+        )
+    )                                               AS last_run_datetime
+
+FROM msdb.dbo.sysjobs j
+JOIN msdb.dbo.sysjobhistory h
+    ON j.job_id = h.job_id
+WHERE
+    h.step_id = 0   
+	and j.name ='CET_Daily_Refresh'       -- step_id 0 = overall job outcome (not individual steps)
+    AND h.run_status IN (1, 3)  -- 1 = Succeeded, 3 = Retry (skip cancelled/failed for avg)
+    AND CONVERT(DATETIME,
+            CONVERT(VARCHAR, h.run_date) + ' ' +
+            STUFF(STUFF(RIGHT('000000' + CONVERT(VARCHAR, h.run_time), 6), 5, 0, ':'), 3, 0, ':')
+        ) >= DATEADD(MONTH, -1, GETDATE())
+GROUP BY
+    j.name
+ORDER BY
+    avg_duration_seconds DESC;

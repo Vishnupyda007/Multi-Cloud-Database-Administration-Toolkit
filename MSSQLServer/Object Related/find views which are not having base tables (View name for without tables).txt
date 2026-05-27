@@ -1,0 +1,3 @@
+-------------find views which are not having base tables (View name for without tables)
+select v.name as viewname,* from sys.views V LEFT JOIN sys.sql_expression_dependencies d 
+on v.object_id=d.referencing_id where d.referenced_id is null and v.name like '%vw_centr%';

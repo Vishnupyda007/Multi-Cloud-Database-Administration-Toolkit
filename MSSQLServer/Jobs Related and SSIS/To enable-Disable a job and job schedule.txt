@@ -1,0 +1,29 @@
+--------To enable/Disable a job---------
+EXEC dbo.sp_update_job  @job_name = N' CHire_CandidateHiredDetail1 ',@enabled = 1; 
+
+
+--------or-----------
+exec msdb..sp_update_job @job_name = 'CombinedBigramTags_BloltoDb', @enabled = 1
+
+
+-----to disable multiple jobs-------
+
+USE msdb;
+GO
+ 
+-- Disable multiple jobs by name
+UPDATE dbo.sysjobs
+SET enabled = 0
+WHERE name IN ('JobName1', 'JobName2', 'JobName3', 'JobName4', 'JobName5');
+GO
+
+
+
+---------To Disable job schedule-------
+
+EXEC dbo.sp_update_schedule
+  @schedule_id = NULL,     -- Must provide either this or schedule_name  
+    @name = 'NightlyJobs',----must provide this schedule name or schedule ID
+    @enabled = 0,
+    @owner_login_name = 'terrid';
+GO

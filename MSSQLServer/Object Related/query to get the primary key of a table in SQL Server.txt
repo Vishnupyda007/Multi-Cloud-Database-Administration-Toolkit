@@ -1,0 +1,26 @@
+--------
+
+SELECT 
+    c.name AS ColumnName
+FROM 
+    sys.indexes i
+    INNER JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+    INNER JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+    INNER JOIN sys.tables t ON i.object_id = t.object_id
+WHERE 
+    i.is_primary_key = 1
+    AND t.name = 'YourTableName'
+    AND SCHEMA_NAME(t.schema_id) = 'YourSchemaName';
+
+
+
+-----OR----
+
+SELECT 
+    COLUMN_NAME
+FROM 
+    INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+WHERE 
+    OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1
+    AND TABLE_NAME = 'YourTableName'
+    AND TABLE_SCHEMA = 'YourSchemaName';

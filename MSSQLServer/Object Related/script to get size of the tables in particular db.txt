@@ -1,0 +1,46 @@
+SELECT OBJECT_NAME(a.object_id), COUNT_BIG(*) * 8192/(1024*1024) AS size_MB 
+FROM sys.dm_db_database_page_allocations(DB_ID(), NULL, null, null, 'LIMITED') AS a 
+WHERE a.extent_file_id = 1 
+GROUP BY OBJECT_NAME(a.object_id)
+ORDER BY size_MB DESC
+
+   
+
+---------------------- or ---------------
+SELECT sys.objects.name, SUM(reserved_page_count) * 8.0 / 1024 as SizeMB
+FROM sys.dm_db_partition_stats, sys.objects 
+WHERE sys.dm_db_partition_stats.object_id = sys.objects.object_id 
+GROUP BY sys.objects.name
+ORDER BY SizeMB DESC;
+GO
+
+
+-----------with schema.tableName--------------------
+
+SELECT 
+    s.name + '.' + o.name AS SchemaTableName,
+    SUM(ps.reserved_page_count) * 8.0 / 1024 AS SizeMB
+FROM 
+    sys.dm_db_partition_stats AS ps
+JOIN 
+    sys.objects AS o ON ps.object_id = o.object_id
+JOIN 
+    sys.schemas AS s ON o.schema_id = s.schema_id
+	where (s.name + '.' + o.name) in (
+	'schema.table'
+)
+GROUP BY 
+    s.name, o.name
+ORDER BY 
+    SizeMB DESC;
+GO
+
+
+
+-------------------------In GB----------------------------
+SELECT sys.objects.name, (SUM(reserved_page_count) * 8.0 / 1024)/1000 as SizeGB
+FROM sys.dm_db_partition_stats, sys.objects 
+WHERE sys.dm_db_partition_stats.object_id = sys.objects.object_id 
+GROUP BY sys.objects.name
+ORDER BY SizeGB DESC;
+GO
