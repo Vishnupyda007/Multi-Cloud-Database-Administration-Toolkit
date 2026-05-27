@@ -1,0 +1,156 @@
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.staging
+.env.dev
+
+# Credentials & API Keys
+credentials.json
+secrets.json
+config.json
+*.credentials
+.aws/credentials
+.aws/config
+.azure/
+~/.gcloud/
+
+# Private Keys & Certificates
+*.pem
+*.key
+*.pfx
+*.p12
+*.jks
+*.crt
+*.cer
+private_key
+id_rsa
+id_ed25519
+
+# Sensitive Files - Database
+*.sql.backup
+*.backup
+*.bak
+passwords.txt
+keys.txt
+connection-strings.txt
+database.conf
+db_config.ini
+sql-credentials.txt
+
+# Cloud Provider Files
+# AWS
+.aws/*
+aws_access_key_id
+aws_secret_access_key
+aws_session_token
+
+# Azure
+azure_credentials.json
+azureauth.properties
+.azure/*
+
+# GCP
+google-cloud-credentials.json
+service-account-key.json
+gcp_key.json
+
+# Terraform & Infrastructure
+terraform.tfvars
+terraform.tfstate
+terraform.tfstate.backup
+*.tfvars
+*.tfstate
+
+# IDE & Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-workspace
+*.sublime-project
+
+# Logs & Temporary Files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bkp
+
+# OS & Build Files
+node_modules/
+dist/
+build/
+.gradle/
+target/
+Thumbs.db
+.directory
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# PowerShell
+*.ps1.bak
+*.pssc
+PSScriptAnalyzerSettings.psd1
+
+# Database Files
+*.mdf
+*.ldf
+*.ndf
+*.sqlite
+*.sqlite3
+*.db
+*.ibd
+
+# Archive Files (review before committing)
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# IDE Generated Files
+.idea/
+.vscode/
+*.iml
+*.sublime-workspace
+
+# OS Files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+.directory
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Git
+.git/
+.gitmodules
+.gitkeep
+
+# Misc
+.cache/
+.history/
+.local/
+.env.prod.local
+.env.test.local
+npm-debug.log*
+lerna-debug.log*
