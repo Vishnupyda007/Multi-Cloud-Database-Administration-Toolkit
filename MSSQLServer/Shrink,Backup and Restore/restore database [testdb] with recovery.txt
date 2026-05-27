@@ -1,0 +1,5 @@
+Use this below Query to restore the database to normal if the Databases are in restoring state and unable to offline them or access them.
+
+Query:
+
+restore database [testdb] with recovery

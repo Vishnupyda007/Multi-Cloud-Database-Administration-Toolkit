@@ -1,0 +1,6 @@
+------------------How to Encrypt a Stored Procedure in SQL Server-------------
+
+
+--> https://www.mssqltips.com/sqlservertip/7465/encrypt-stored-procedure-sql-server/
+
+-->https://www.mssqltips.com/sqlservertip/2964/encrypting-and-decrypting-sql-server-stored-procedures-views-and-userdefined-functions/

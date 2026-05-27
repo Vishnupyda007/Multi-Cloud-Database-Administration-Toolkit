@@ -1,0 +1,29 @@
+ select *
+        from distribution..MSsubscriptions sub
+        WHERE publisher_id = sub.publisher_id
+            AND publisher_db = sub.publisher_db
+            AND publication_id = sub.publication_id
+            AND subscriber_id = sub.subscriber_id
+            AND subscriber_db = sub.subscriber_db
+        and status = 0
+
+    if exists (select 1 from distribution..MSsubscriptions where status = 0)
+    begin
+        begin tran
+            UPDATE distribution..MSsubscriptions
+            SET STATUS = 2
+            from distribution..MSsubscriptions sub
+            WHERE publisher_id = sub.publisher_id
+                AND publisher_db = sub.publisher_db
+                AND publication_id = sub.publication_id
+                AND subscriber_id = sub.subscriber_id
+                AND subscriber_db = sub.subscriber_db
+            and status = 0
+        -- if you do not believe in paranoia checks, then comment out the following roll back
+        rollback -- the default is set to 'roll back' to force DBA to manual run lines in this script
+        commit
+    end
+    else
+    begin
+        print 'No subscriptions are INACTIVE ... you are good for now .... !!'
+    end

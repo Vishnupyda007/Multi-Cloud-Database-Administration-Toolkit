@@ -1,0 +1,15 @@
+--Set allow_anonymous to false
+USE [Publisher_DBName]
+go
+EXEC sp_changepublication
+@publication = 'PUB_MI_DNA_CRS',
+@property = N'allow_anonymous',
+@value = 'false';
+GO
+
+--Set immediate_sync to false
+EXEC sp_changepublication
+@publication = 'PUB_MI_DNA_CRS',
+@property = N'immediate_sync',
+@value = 'false';
+GO

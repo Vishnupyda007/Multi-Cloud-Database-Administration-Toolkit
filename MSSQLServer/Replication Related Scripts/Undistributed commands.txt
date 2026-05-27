@@ -1,0 +1,41 @@
+---Undistributed commands
+The number of pending commands that are yet to be applied to the subscriber by distribution agent for a transactional publication. It also provides a rough estimate of how much time it takes to process them.
+
+
+EXEC distribution.dbo.sp_replmonitorsubscriptionpendingcmds 
+    @publisher = 'your_publisher_server_name', 
+    @publisher_db = 'your_publisher_db_name', 
+    @publication = N'your_publication_name',
+    @subscriber = 'your_subscriber_server_name', 
+    @subscriber_db = 'your_subscriber_db_name',
+    @subscription_type = 1 -- 0=push subscription and 1=pull
+image.png
+
+Undistributed commands for each table
+If you want to find undelivered commands for each table in a publication, you can get the detail from MSdistribution_status view from distribution database.
+
+
+Copy
+
+Copy
+SELECT  
+p.name as publisher_server,
+da.publisher_db,
+s.name as subscriber_server,
+da.subscriber_db,
+da.publication as publication,
+a.destination_object as table_name,
+ds.DelivCmdsInDistDB as delivered_commands_in_distribution_db,
+ds.UndelivCmdsInDistDB as undelivered_commands_in_distribution_db
+FROM distribution.dbo.MSdistribution_status ds 
+INNER JOIN distribution.dbo.MSdistribution_agents da ON da.id = ds.agent_id                          
+INNER JOIN distribution.dbo.MSArticles a ON a.publisher_id = da.publisher_id AND a.publisher_db = da.publisher_db AND a.article_id = ds.article_id
+INNER JOIN master.sys.servers  s ON s.server_id = da.subscriber_id 
+INNER JOIN master.sys.servers  p ON p.server_id = da.publisher_id 
+WHERE p.name = 'your_publisher_server_name'
+AND s.name = 'your_subscriber_server_name'
+AND da.publisher_db = 'your_publisher_db_name'
+AND da.subscriber_db = 'your_subscriber_db_name'
+AND ds.UndelivCmdsInDistDB <> 0
+ORDER BY undelivered_commands_in_distribution_db DESC, 
+table_name ASC

@@ -1,0 +1,5 @@
+1. to check select * from msdb.dbo.MSdistpublishers
+2. exec sp_changedistpublisher @publisher = @@ServerName, @property = N'storage_connection_string', @value = null  - make it as null
+3. exec sp_changedistpublisher @publisher = @@ServerName, @property = N'storage_connection_string', 
+@value = N'AccountName=Cts\SCAPEX;AccountKey=Ed$1nfadevelopmentusr2' - change the credentials.
+4. once again confirm for the credentials to check - select * from msdb.dbo.MSdistpublishers

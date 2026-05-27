@@ -1,0 +1,71 @@
+DECLARE @SPName NVARCHAR(255) = 'SP name ';
+ 
+-- Find the object_id of the stored procedure
+DECLARE @SPObjectID INT;
+SELECT @SPObjectID = OBJECT_ID(@SPName);
+ 
+IF @SPObjectID IS NULL
+BEGIN
+    PRINT 'Stored procedure not found!';
+    RETURN;
+END;
+ 
+-- Recursive CTE to trace dependencies to the final tables
+;WITH DependencyCTE AS
+(
+    -- Get direct dependencies of the stored procedure
+    SELECT 
+        d.referenced_id AS ReferencedObjectID,
+        o.name AS ReferencedEntity,
+        o.type_desc AS EntityType,
+        o.object_id,
+        1 AS Level
+    FROM 
+        sys.sql_expression_dependencies d
+        INNER JOIN sys.objects o ON d.referenced_id = o.object_id
+    WHERE 
+        d.referencing_id = @SPObjectID
+        AND o.type_desc IN ('VIEW', 'USER_TABLE')  -- We are interested in views and tables
+ 
+    UNION ALL
+ 
+    -- Recursively get dependencies of the referenced views
+    SELECT 
+        d2.referenced_id AS ReferencedObjectID,
+        o2.name AS ReferencedEntity,
+        o2.type_desc AS EntityType,
+        o2.object_id,
+        dc.Level + 1 AS Level
+    FROM 
+        sys.sql_expression_dependencies d2
+        INNER JOIN sys.objects o2 ON d2.referenced_id = o2.object_id
+        INNER JOIN DependencyCTE dc ON d2.referencing_id = dc.ReferencedObjectID
+    WHERE 
+        o2.type_desc IN ('VIEW', 'USER_TABLE')  -- Continue to track views and tables
+        AND dc.Level < 10  -- Limit recursion depth
+)
+-- Select only the end tables
+, EndTables AS
+(
+    SELECT DISTINCT 
+        ReferencedEntity AS [TableName],
+        ReferencedObjectID AS [TableObjectID]
+    FROM 
+        DependencyCTE
+    WHERE 
+        EntityType = 'USER_TABLE'  -- Only return tables
+)
+ 
+-- Query to get the column names and their data types for the final tables
+SELECT 
+    et.TableName,
+    c.name AS ColumnName,
+    t.name AS DataType,
+    c.max_length AS MaxLength,
+    c.is_nullable AS IsNullable
+FROM 
+    EndTables et
+    INNER JOIN sys.columns c ON et.TableObjectID = c.object_id
+    INNER JOIN sys.types t ON c.user_type_id = t.user_type_id
+ORDER BY 
+    et.TableName, c.column_id;

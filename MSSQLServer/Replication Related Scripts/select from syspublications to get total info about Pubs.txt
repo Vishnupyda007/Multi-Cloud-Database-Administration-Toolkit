@@ -1,0 +1,3 @@
+USE [PUB_DB]
+GO
+select * from syspublications

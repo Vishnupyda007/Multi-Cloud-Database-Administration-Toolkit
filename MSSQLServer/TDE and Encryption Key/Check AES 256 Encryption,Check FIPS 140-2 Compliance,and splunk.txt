@@ -1,0 +1,55 @@
+To check the encryption type, key storage module, and whether Splunk is enabled for your production database in SQL Server Managed Instance (MI) using SQL Server Management Studio (SSMS), follow these steps:
+
+1. Check AES 256 Encryption
+To verify if AES 256 encryption is enabled, you can use the following SQL script to check for symmetric keys using AES 256:
+
+-- Check for symmetric keys using AES 256
+SELECT name, algorithm_desc
+FROM sys.symmetric_keys
+WHERE algorithm_desc = 'AES_256';
+This script will list all symmetric keys that use AES 256 encryption.
+
+
+----or ----------------------
+
+SELECT
+    DB_NAME(database_id) AS DatabaseName,
+    encryption_state AS EncryptionState,key_algorithm,key_length
+FROM
+    sys.dm_database_encryption_keys
+
+2. Check FIPS 140-2 Compliance
+To ensure that your SQL Server is using FIPS 140-2 compliant cryptographic modules, you need to check the operating system settings. FIPS 140-2 compliance is enforced at the OS level. Here’s how to check:
+
+Enable FIPS 140-2 Compliance on Windows:
+
+Open the Local Security Policy management console (secpol.msc).
+Navigate to Local Policies > Security Options.
+Find the policy System cryptography: Use FIPS compliant algorithms for encryption, hashing, and signing.
+Ensure this policy is set to Enabled12.
+Verify FIPS 140-2 Compliance in SQL Server:
+
+SQL Server will automatically use FIPS-compliant cryptographic modules when this setting is enabled at the OS level12.
+3. Check if Splunk is Enabled
+To check if Splunk is enabled and collecting data from your SQL Server Managed Instance, you can look for the Splunk Add-on for Microsoft SQL Server. Here’s how to verify:
+
+Check for Splunk Add-on:
+
+Open Splunk and navigate to the Apps section.
+Look for the Splunk Add-on for Microsoft SQL Server. This add-on collects system performance, SQL Server performance, log, audit, and status data34.
+Verify Data Collection:
+
+Ensure that the Splunk DB Connect app is configured to connect to your SQL Server. You can verify this by checking the data inputs and connections in the Splunk DB Connect app5.
+If you need more detailed guidance or have specific questions, feel free to ask!
+
+
+
+1
+Use SQL 2016 in FIPS 140-2-compliant mode - SQL Server
+
+2
+Enable FIPS 140-2 Compliance in SQL Server
+
+3
+Splunk for Microsoft SQL Server, Part 1 - Splunk Community
+Show more

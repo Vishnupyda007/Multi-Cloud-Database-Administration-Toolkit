@@ -1,0 +1,56 @@
+USE [Distribution]
+SELECT 
+    cmds.article_id,
+    Ma.article,
+    CAST(cmds.partial_command AS TINYINT),
+    cmds.command,
+    cmds.xact_seqno,
+    cmds.xact_seqno,
+    0,
+    cmds.command_id,
+    cmds.type,
+    orgs.srvname,
+    orgs.dbname,
+    CAST(cmds.hashkey AS SMALLINT),
+    orgs.publication_id,
+    orgs.dbversion,
+    cmds.originator_lsn
+FROM 
+    MSrepl_commands cmds 
+LEFT JOIN 
+    MSrepl_originators orgs 
+ON 
+    cmds.originator_id = orgs.id
+LEFT JOIN
+    MSarticles Ma
+ON
+    cmds.article_id = Ma.article_id
+WHERE 
+    cmds.xact_seqno >= 0x00005CC7000115DA000E 
+    AND cmds.xact_seqno <= 0x00005CC7000115DA000E 
+ORDER BY 
+    cmds.originator_id, 
+    cmds.publisher_database_id, 
+    cmds.xact_seqno, 
+    cmds.article_id, 
+    cmds.command_id ASC
+
+
+------------------or------------------------
+USE DISTRIBUTION
+select cmds.article_id, cast (cmds.partial_command as tinyint), cmds.command, cmds.xact_seqno, cmds.xact_seqno, 0, cmds.command_id, cmds.type, orgs.srvname, orgs.dbname, cast (cmds.hashkey as smallint), orgs.publication_id, orgs.dbversion, cmds.originator_lsn from MSrepl_commands cmds left join MSrepl_originators orgs on cmds.originator_id = orgs.id where cmds.xact_seqno >= 0x00005CC7000115DA000E and cmds.xact_seqno <= 0x00005CC7000115DA000E order by cmds.originator_id, cmds.publisher_database_id, cmds.xact_seqno, cmds.article_id, cmds.command_id asc
+
+
+
+--The SQL query you’ve provided is designed to retrieve information from a Microsoft SQL Server database that is involved in replication. Specifically, it’s used to select details about the replication commands and articles from the MSrepl_commands, MSrepl_originators, and MSarticles system tables, which are part of the replication setup in SQL Server.
+Here’s a breakdown of what this query does:
+It selects various fields related to the replication commands (cmds) and the articles (Articles) being replicated.
+It performs a LEFT JOIN on the MSrepl_originators table to include information about the originators of the transactions.
+It filters the results to include only the commands within a specific transaction sequence number range.
+It orders the results by several columns, ensuring that the data is sorted in a specific sequence.
+This type of query is useful in scenarios where you need to monitor or troubleshoot the replication process. For example, you might run this query to:
+Check the status of replicated commands.
+Identify any replication commands that are stuck or have not been distributed.
+Analyze the replication flow for a specific article or transaction.
+The MSrepl_commands table contains rows of replicated commands and is stored in the distribution database. The MSrepl_originators table contains information about each updatable subscriber from which the transaction originated, also stored in the distribution database. The MSarticles table provides details about the articles that are being replicated123.
+If you’re looking to troubleshoot replication or understand the flow of replication commands, this query can be a valuable tool in your SQL Server toolkit.

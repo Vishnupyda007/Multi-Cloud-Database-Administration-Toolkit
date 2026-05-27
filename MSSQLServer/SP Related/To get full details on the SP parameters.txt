@@ -1,0 +1,17 @@
+SELECT 'Parameter_name' = name,
+       'Type' = TYPE_NAME(user_type_id),
+       'Length' = max_length,
+       'Prec' = CASE
+                    WHEN TYPE_NAME(system_type_id) = 'uniqueidentifier'
+                    THEN precision
+                    ELSE OdbcPrec(system_type_id, max_length, precision)
+                END,
+       'Scale' = OdbcScale(system_type_id, scale),
+       'Param_order' = parameter_id,
+       'Collation' = CONVERT(SYSNAME,
+                             CASE
+                                 WHEN system_type_id IN(35, 99, 167, 175, 231, 239)
+                                 THEN SERVERPROPERTY('collation')
+                             END)
+FROM sys.parameters
+WHERE object_id = OBJECT_ID('dbo.IndexOptimize');

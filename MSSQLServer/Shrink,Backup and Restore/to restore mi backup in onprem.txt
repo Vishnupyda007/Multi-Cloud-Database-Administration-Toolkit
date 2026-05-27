@@ -1,0 +1,7 @@
+RESTORE DATABASE TEST
+FROM URL = N'https://ctssqlmiprod.blob.core.windows.net/sqlmidbbkp/OneC_Core_17Oct2024_pddb06.bak'
+WITH MOVE 'TEST' TO 'E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\DATA\TEST.mdf',
+MOVE 'TEST_LOG' TO 'E:\Program Files\Microsoft SQL Server\MSSQL13.MSSQLSERVER\MSSQL\DATA\TEST_LOG.ldf'
+
+
+----with MOVE 'TEST'--> mention logical file name of the source

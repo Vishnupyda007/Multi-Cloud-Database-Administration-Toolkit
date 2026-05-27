@@ -1,0 +1,2 @@
+--select * from dbo.MSpublications
+--select * from msrepl_transactions

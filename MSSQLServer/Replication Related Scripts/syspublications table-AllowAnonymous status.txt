@@ -1,0 +1,2 @@
+select * from dbo.syspublications;
+select * from dbo.MSpublications

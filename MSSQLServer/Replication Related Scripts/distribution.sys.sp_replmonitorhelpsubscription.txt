@@ -1,0 +1,1 @@
+EXEC distribution.sys.sp_replmonitorhelpsubscription @publication_type = 0

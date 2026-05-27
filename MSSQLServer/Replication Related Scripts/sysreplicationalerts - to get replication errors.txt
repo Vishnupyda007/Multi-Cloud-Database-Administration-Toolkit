@@ -1,0 +1,2 @@
+select a.resource_name, * from msdb.dbo.sysreplicationalerts ra
+left join master.sys.server_resource_stats a on ra.publication = a.resource_name

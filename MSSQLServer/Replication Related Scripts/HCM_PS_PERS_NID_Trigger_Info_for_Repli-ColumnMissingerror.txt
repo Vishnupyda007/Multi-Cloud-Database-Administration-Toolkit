@@ -1,0 +1,56 @@
+USE [ent_data_store_sub]
+GO
+
+/****** Object:  Trigger [dbo].[trg_ESA_PS_CTS_PC_SS_DELG_STG_CURR_WriteOperations]    Script Date: 8/12/2024 12:31:22 PM ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TRIGGER [dbo].[trg_HCM_PS_PERS_NID_STG_CURR_WriteOperations]
+ON [dbo].[HCM_PS_PERS_NID_STG_CURR]
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+ 
+    DECLARE @ExecutedBy SYSNAME = SUSER_SNAME();
+    DECLARE @ApplicationName NVARCHAR(128) = APP_NAME();
+    DECLARE @HostName NVARCHAR(128) = HOST_NAME();
+ 
+    IF EXISTS (SELECT * FROM inserted)
+    BEGIN
+        IF EXISTS (SELECT * FROM deleted)
+        BEGIN
+            -- Handle UPDATE
+            INSERT INTO HCM_PS_PERS_NID_STG_CURR_Tracking(OperationType, ChangedData, PreviousData, ExecutedBy, ApplicationName, HostName)
+            SELECT 'UPDATE', 
+                   (SELECT * FROM inserted FOR JSON AUTO), 
+                   (SELECT * FROM deleted FOR JSON AUTO), 
+                   @ExecutedBy, @ApplicationName, @HostName;
+        END
+        ELSE
+        BEGIN
+            -- Handle INSERT
+            INSERT INTO HCM_PS_PERS_NID_STG_CURR_Tracking(OperationType, ChangedData, ExecutedBy, ApplicationName, HostName)
+            SELECT 'INSERT', 
+                   (SELECT * FROM inserted FOR JSON AUTO), 
+                   @ExecutedBy, @ApplicationName, @HostName;
+        END
+    END
+    ELSE
+    BEGIN
+        -- Handle DELETE
+        INSERT INTO HCM_PS_PERS_NID_STG_CURR_Tracking(OperationType, PreviousData, ExecutedBy, ApplicationName, HostName)
+        SELECT 'DELETE', 
+               (SELECT * FROM deleted FOR JSON AUTO), 
+               @ExecutedBy, @ApplicationName, @HostName;
+    END
+END;
+GO
+
+ALTER TABLE [dbo].[HCM_PS_PERS_NID_STG_CURR] ENABLE TRIGGER [trg_HCM_PS_PERS_NID_STG_CURR_WriteOperations]
+GO
+
+

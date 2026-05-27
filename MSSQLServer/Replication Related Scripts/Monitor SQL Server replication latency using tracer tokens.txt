@@ -1,0 +1,21 @@
+There are multiple built-in system procedures that you can use to manage tracer tokens, some of which include:
+
+
+Use [Publisher_DB]
+go
+sp_posttracertoken 'PublicationName' --(used to push a token into a publication)
+
+sp_helptracertokens 'PublicationName' --(returns a row for each tracer token that has been inserted at a publisher for a given publication)
+
+– sp_helptracertokenhistory 'Tracer_id'  --(returns latency information for a given token id value retrieved from either of the procedures above)
+
+– sp_deletetracertokenhistory (removes token records from the system meta tables)
+
+
+
+
+
+Tracer tokens were introduced with Sql Server 2005 transactional replication as a way to monitor the latency of delivering transactions from the publisher to the distributor and from the distributor to the subscriber(s) (and as a side-effect, you can also get the time from the publisher to the subscriber(s)). A tracer token is basically a small piece of data that is inserted into the transaction log for the given publication just as if it were data for a standard database transaction (i.e. a new record that was inserted, or an update, or a delete, etc.) and is treated basically the same way as well (with the exception that no user data is obviously modified in either the publisher or subscriber). You insert tokens for a given publication at the publisher, and the progress of the token can be queried on the publisher as well.
+
+Prior to Sql 2005, tracking the latency for transaction distribution in a replication topology was very tedious to say the least – some solutions included using ‘dummy’ tables to push record updates/inserts/deletes out to each subscriber, however much code had to be written to track the changes through the entire system, including the necessity typically to connect to the actual distributors/subscribers to query for the changed data and verify the replication of said data. With Sql 2005, tracer tokens provide a simple, easy, light-weight way for you to check the latency of a transactional replication topology automatically from a single point (i.e. your publisher).
+

@@ -1,0 +1,6 @@
+select b.database_name, b.type, bf.physical_device_name, b.backup_start_date,
+b.backup_finish_date, b.backup_size/1024/1024/1024 as Backup_size_in_GB
+from msdb..backupset b
+left outer join msdb..backupmediafamily bf on bf.media_set_id = b.media_set_id
+where b.type in('l') and b.database_name = 'CentralRepository'
+order by b.backup_finish_date desc

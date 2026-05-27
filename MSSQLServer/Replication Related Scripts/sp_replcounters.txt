@@ -1,0 +1,4 @@
+Using the below query you can determine how good the overall replication latency is. The higher the value you see in "replication transactions rate/sec" the better the data transfer speed for replication. Also having low numbers for the "replication latency (sec)" column.
+
+
+sp_replcounters

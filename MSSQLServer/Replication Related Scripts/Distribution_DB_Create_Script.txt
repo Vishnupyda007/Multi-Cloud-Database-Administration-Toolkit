@@ -1,0 +1,36 @@
+--1)
+Use [master]
+ 
+Go
+ 
+EXEC sp_adddistributor
+ 
+@distributor = 'ctsazpdmincapps1.b96303a221dc.database.windows.net',  -- primary publisher Server
+@password = 'Distribution@123'
+
+----Sometimes we will get below warning as well but still we can go to next 2nd step:
+--Warning: A linked server that refers to the originating server is not a supported scenario.  If you wish to use a four-part name to reference a local table, please use the actual server name rather than an alias.
+--We can ignore the warnings.
+
+ 
+--2)
+EXEC sp_adddistributiondb @database = N'distribution'
+EXEC sp_adddistpublisher @publisher = 'ctsazpdmincapps1.b96303a221dc.database.windows.net', -- primary publisher Server
+ 
+     @distribution_db = N'distribution',
+     @security_mode = 0,
+     @login = N'crsdba',
+     @password = N'',
+     @working_directory = N'\\azstoragesqlmiprodreplfs.file.core.windows.net\ctssqlmicrsmasazurefs',
+     @storage_connection_string = N'DefaultEndpointsProtocol=https;AccountName=azstoragesqlmiprodreplfs;AccountKey=gmdK7eoMt5bm0jTDy9nsJx3kFmbuShJb81vphCKRvKBvewcVfE9jRtlF9MCXiG+tMns5G8aTf1DG+AStzSjEVg==;EndpointSuffix=core.windows.net'
+
+ -----DefaultEndpointsprotocol and EndpointSuffix is necessary and Accountkey should be in same line
+
+--3)
+ 
+use [CentralRepository]
+exec sp_replicationdboption 
+@dbname = N'CentralRepository'
+, @optname = N'publish'
+, @value = N'true'
+GO

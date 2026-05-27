@@ -1,0 +1,61 @@
+Query to get the table list in replication
+
+SELECT 
+  msp.publication AS PublicationName,
+  msa.publisher_db AS DatabaseName,
+  msa.article AS ArticleName,
+  msa.source_owner AS SchemaName,
+  msa.source_object AS TableName
+FROM distribution.dbo.MSarticles msa
+JOIN distribution.dbo.MSpublications msp ON msa.publication_id = msp.publication_id
+--where msa.article='Centralrepository'(comment)
+ORDER BY 
+  msp.publication, 
+  msa.article
+
+
+
+-------------------------to get tables in replication based on pub and subscribed server--------------
+
+USE [PUB_DB_Name]
+GO
+SELECT 
+pub.name AS [Publication],
+art.name as [Article],
+serv.name as [Subsriber],
+sub.dest_db as [DestinationDB]
+FROM dbo.syssubscriptions sub
+INNER JOIN sys.servers serv
+ON serv.server_id = sub.srvid
+INNER JOIN dbo.sysarticles art
+ON art.artid = sub.artid
+INNER JOIN dbo.syspublications pub
+ON pub.pubid = art.pubid
+where pub.name = 'Pub_sgntm1_sstfd1' and serv.name ='ctsazsimisgntm1.inso13dfbbbfa2150.database.windows.net'
+
+
+
+---------------source and destination schema for repln tables-----------
+
+SELECT 
+    pub.name                    AS [Publication],
+    art.name                    AS [Article],
+    -- Source
+    SCHEMA_NAME(obj.schema_id)  AS [SourceSchema],
+    OBJECT_NAME(art.objid)      AS [SourceTable],
+    -- Destination
+    art.dest_owner              AS [DestinationSchema],
+    art.dest_table              AS [DestinationTable],
+    -- Subscriber
+    serv.name                   AS [Subscriber],
+    sub.dest_db                 AS [DestinationDB]
+FROM dbo.syssubscriptions sub
+INNER JOIN sys.servers serv
+    ON serv.server_id = sub.srvid
+INNER JOIN dbo.sysarticles art
+    ON art.artid = sub.artid
+INNER JOIN dbo.syspublications pub
+    ON pub.pubid = art.pubid
+INNER JOIN sys.objects obj
+    ON obj.object_id = art.objid
+WHERE pub.name = 'Pub_sgntm1_sstfd1'
