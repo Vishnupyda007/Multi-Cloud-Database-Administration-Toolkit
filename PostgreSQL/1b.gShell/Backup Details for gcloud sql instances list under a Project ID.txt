@@ -1,0 +1,33 @@
+You forgot to replace `YOUR_PROJECT_ID` in the first `gcloud sql instances list` command. You replaced it only in the `describe` command but not the `list` command.
+
+**Fix — replace both places:**
+
+```bash
+for instance in $(gcloud sql instances list \
+  --project=cb0104074a-citnonprod-gc \
+  --filter="databaseVersion:POSTGRES*" \
+  --format="value(name)"); do
+  echo "========================================="
+  echo "Instance: $instance"
+  gcloud sql instances describe $instance \
+    --project=cb0104074a-citnonprod-gc \
+    --format="yaml(settings.backupConfiguration)"
+done
+```
+
+Or set the project once and skip repeating it:
+
+```bash
+gcloud config set project cb0104074a-citnonprod-gc
+
+for instance in $(gcloud sql instances list \
+  --filter="databaseVersion:POSTGRES*" \
+  --format="value(name)"); do
+  echo "========================================="
+  echo "Instance: $instance"
+  gcloud sql instances describe $instance \
+    --format="yaml(settings.backupConfiguration)"
+done
+```
+
+The second approach is cleaner, especially when running multiple commands against the same project.

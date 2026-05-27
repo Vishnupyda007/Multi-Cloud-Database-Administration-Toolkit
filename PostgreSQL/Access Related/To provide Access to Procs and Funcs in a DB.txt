@@ -1,0 +1,464 @@
+this is a very common Cloud SQL PostgreSQL gotcha, especially once you start using procedures (PostgreSQL 11+).
+Below is the clean, production-safe way to give default access to procedures automatically so you don’t have to GRANT every time 🚀
+🎯 Goal
+Ensure that any new PROCEDURE created in a schema automatically gets EXECUTE permission for a role (app/user).
+✅ Recommended Script (Default Privileges)
+Run this once, as the procedure owner role (very important).
+🔹 Grant default EXECUTE on future procedures
+ALTER DEFAULT PRIVILEGES
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINES TO app_user;
+📌 Notes:
+ROUTINES covers both FUNCTIONS and PROCEDURES
+Applies only to objects created AFTER this command
+Replace:
+public → your schema name
+app_user → your application role
+🔐 If procedures are created by a specific role
+Default privileges are role-specific.
+If procedures are created by proc_owner:
+ALTER DEFAULT PRIVILEGES
+FOR ROLE proc_owner
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINES TO app_user;
+✅ This is the most correct pattern in Cloud SQL.
+🧠 Existing Procedures (one-time fix)
+Default privileges do NOT apply retroactively.
+Grant access to existing procedures:
+GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO app_user;
+🏗️ Multiple Schemas (recommended for prod)
+ALTER DEFAULT PRIVILEGES
+FOR ROLE proc_owner
+IN SCHEMA reporting
+GRANT EXECUTE ON ROUTINES TO app_user;
+Repeat per schema (PostgreSQL has no global default privilege switch).
+🔍 Verify Permissions
+SELECT routine_schema,
+       routine_name,
+       privilege_type
+FROM information_schema.role_routine_grants
+WHERE grantee = 'app_user';
+⚠️ Cloud SQL Important Notes (DBA reality check)
+✔ Works fully in Cloud SQL for PostgreSQL
+✔ No superuser required
+❌ Cannot apply across all schemas automatically
+❌ Must be run per role that creates procedures
+✅ Best-Practice Setup (Production)
+ObjectOwnerAccessProceduresproc_ownerNo app loginApp roleapp_userEXECUTE onlyDefault privilegesConfigured onceAutomatic
+If you want, I can also:
+🔒 Lock down procedures so only EXECUTE is allowed (no ALTER/DROP)
+🧪 Provide Cloud SQL incident scenario where missing default privileges caused outages
+📋 Give a DBA checklist for procedures/functions security
+🔁 Show Terraform / Flyway compatible scripts
+
+
+
+----------------
+
+
+🔐 1️⃣ Lock Down Procedures (EXECUTE-only, no ALTER/DROP)
+🎯 Goal
+App users can EXECUTE procedures
+They cannot modify, drop, or inspect source
+Ownership stays with a controlled role
+✅ Role Model (Recommended)
+Text
+Copy code
+proc_owner   → owns procedures
+app_user     → executes procedures
+readonly     → optional reporting
+🔹 Step 1: Revoke everything first (Zero-trust)
+Sql
+Copy code
+REVOKE ALL ON SCHEMA public FROM app_user;
+REVOKE ALL ON ALL ROUTINES IN SCHEMA public FROM app_user;
+🔹 Step 2: Allow only EXECUTE
+Sql
+Copy code
+GRANT USAGE ON SCHEMA public TO app_user;
+GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO app_user;
+🔹 Step 3: Default privilege for future procedures
+Sql
+Copy code
+ALTER DEFAULT PRIVILEGES
+FOR ROLE proc_owner
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINES TO app_user;
+✅ Result:
+New procedures → auto-accessible
+No manual GRANTs
+No over-privileged apps
+🔐 Prevent ALTER/DROP (Owner isolation)
+Ensure procedures are owned only by proc_owner:
+Sql
+Copy code
+ALTER PROCEDURE my_proc OWNER TO proc_owner;
+App role cannot:
+DROP
+ALTER
+VIEW definition
+🚨 2️⃣ Real Cloud SQL Production Incident (True Story Pattern)
+❌ What happened
+New procedure deployed via CI/CD
+Dev forgot to GRANT EXECUTE
+App started failing immediately
+🔥 Symptoms
+Copy code
+ 
+ERROR: permission denied for procedure process_payment()
+API 500 errors
+Background jobs failing
+Incident escalated as “DB outage”
+🧠 Root Cause
+No default privileges configured
+Manual GRANT dependency
+Deployment order issue
+✅ Permanent Fix
+Sql
+Copy code
+ALTER DEFAULT PRIVILEGES
+FOR ROLE proc_owner
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINES TO app_user;
+📌 This single command eliminated the entire incident class forever.
+📋 3️⃣ DBA Checklist (Procedures & Security)
+✅ Design
+[ ] Separate owner role (proc_owner)
+[ ] No application login for owner
+[ ] Procedures grouped in controlled schemas
+🔐 Security
+[ ] REVOKE ALL from PUBLIC
+[ ] EXECUTE only for apps
+[ ] No DDL privileges to app roles
+⚙️ Defaults
+[ ] Default privileges set per schema
+[ ] Applied for correct owner role
+[ ] Verified with information_schema
+🚀 Deployment
+[ ] CI user = proc_owner
+[ ] No GRANTs in deployment scripts
+[ ] Permissions auto-apply
+🔍 Audit
+[ ] Routine grants monitored
+[ ] Ownership validated quarterly
+🔁 4️⃣ Terraform-Compatible SQL
+Sql
+Copy code
+-- one-time bootstrap
+CREATE ROLE proc_owner NOLOGIN;
+CREATE ROLE app_user LOGIN;
+ 
+GRANT USAGE ON SCHEMA public TO app_user;
+ 
+ALTER DEFAULT PRIVILEGES
+FOR ROLE proc_owner
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINES TO app_user;
+💡 Run as Cloud SQL admin / db owner.
+🔁 5️⃣ Flyway / Liquibase Migration Safe Script
+Sql
+Copy code
+-- V20260205__procedure_privileges.sql
+ 
+DO $$
+BEGIN
+  EXECUTE '
+    ALTER DEFAULT PRIVILEGES
+    FOR ROLE proc_owner
+    IN SCHEMA public
+    GRANT EXECUTE ON ROUTINES TO app_user
+  ';
+END $$;
+✔ Idempotent
+✔ Safe for reruns
+✔ Cloud SQL compatible
+🔍 6️⃣ Monitoring & Validation Queries
+Check who can execute what
+Sql
+Copy code
+SELECT routine_schema,
+       routine_name,
+       grantee,
+       privilege_type
+FROM information_schema.role_routine_grants
+ORDER BY routine_schema, routine_name;
+Find procedures without app access
+Sql
+Copy code
+SELECT p.proname
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public'
+AND NOT EXISTS (
+  SELECT 1
+  FROM information_schema.role_routine_grants g
+  WHERE g.routine_name = p.proname
+    AND g.grantee = 'app_user'
+);
+🧠 7️⃣ DBA Golden Rules (Remember These)
+Default privileges are NOT global
+They are:
+🔒 role-specific
+📂 schema-specific
+Cloud SQL does not allow event-based auto grants
+This setup is the cleanest workaround
+If you want next:
+🔥 Self-healing script that auto-detects missing EXECUTE and fixes it
+🔄 Multi-schema automation
+🧪 Load test showing procedure permission latency
+☁️ GCP Cloud SQL IAM vs DB-level roles comparison
+
+
+
+-----------------------------------for single schema---------------------------------------
+
+
+
+ALTER DEFAULT PRIVILEGES
+FOR ROLE "prodgke-devops-serviceacc@cb0228600a-citprod-gc.iam",postgres
+IN SCHEMA public
+GRANT EXECUTE ON ROUTINEs  TO "clientdrift-5043-prod-sa@cb0228600a-citprod-gc.iam";
+--revoke execute on all routines in schema public from public;
+
+
+DO $$
+DECLARE
+    -- Variable to hold the record for each routine found
+    routine_record RECORD;
+    -- The role you are granting privileges TO
+    target_role TEXT := 'clientdrift-5043-prod-sa@cb0228600a-citprod-gc.iam';
+BEGIN
+    -- Loop through all routines (functions and procedures) in the 'public' schema
+    -- that are owned by the current user.
+    FOR routine_record IN
+        SELECT
+            p.proname AS routine_name,
+            pg_get_function_identity_arguments(p.oid) AS routine_args,
+            p.prokind -- 'f' for function, 'p' for procedure
+        FROM
+            pg_proc p
+        JOIN
+            pg_namespace n ON p.pronamespace = n.oid
+        JOIN
+            pg_roles r ON p.proowner = r.oid
+        WHERE
+            n.nspname = 'public'  -- Only in the public schema
+            AND r.rolname in ('prodgke-devops-serviceacc@cb0228600a-citprod-gc.iam','postgres') -- IMPORTANT: Only routines owned by the user running this script
+            AND p.prokind IN ('f', 'p') -- Only select functions and procedures
+    LOOP
+        -- Check if it's a FUNCTION
+        IF routine_record.prokind = 'f' THEN
+            RAISE NOTICE 'Granting EXECUTE on FUNCTION public.%(%) to %', routine_record.routine_name, routine_record.routine_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON FUNCTION public.%I(%s) TO %I',
+                routine_record.routine_name,
+                routine_record.routine_args,
+                target_role
+            );
+        -- Check if it's a PROCEDURE
+        ELSIF routine_record.prokind = 'p' THEN
+            RAISE NOTICE 'Granting EXECUTE on PROCEDURE public.%(%) to %', routine_record.routine_name, routine_record.routine_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON PROCEDURE public.%I(%s) TO %I',
+                routine_record.routine_name,
+                routine_record.routine_args,
+                target_role
+            );
+        END IF;
+    END LOOP;
+END $$;
+
+
+
+
+-----------------------to exclude any schema--------------------------
+
+
+ALTER DEFAULT PRIVILEGES
+FOR ROLE "npgke-devops-serviceacc@cb0104074a-citnonprod-gc.iam","OneC_4671"
+GRANT EXECUTE ON ROUTINES TO "onedg-4671-np-sa@cb0104074a-citnonprod-gc.iam";
+
+
+DO $$
+DECLARE
+    -- Variable to hold the record for each routine found
+    routine_record RECORD;
+    -- The role you are granting privileges TO
+    target_role TEXT := 'onedg-4671-np-sa@cb0104074a-citnonprod-gc.iam';
+BEGIN
+    -- Loop through all routines (functions and procedures) in the 'public' schema
+    -- that are owned by the current user.
+    FOR routine_record IN
+        SELECT
+            p.proname AS routine_name,
+            pg_get_function_identity_arguments(p.oid) AS routine_args,
+            p.prokind -- 'f' for function, 'p' for procedure
+        FROM
+            pg_proc p
+        JOIN
+            pg_namespace n ON p.pronamespace = n.oid
+        JOIN
+            pg_roles r ON p.proowner = r.oid
+        WHERE
+            n.nspname != 'DBAdmin'  -- Only in the public schema
+            AND r.rolname in ('npgke-devops-serviceacc@cb0104074a-citnonprod-gc.iam','OneC_4671') -- IMPORTANT: Only routines owned by the user running this script
+            AND p.prokind IN ('f', 'p') -- Only select functions and procedures
+    LOOP
+        -- Check if it's a FUNCTION
+        IF routine_record.prokind = 'f' THEN
+            RAISE NOTICE 'Granting EXECUTE on FUNCTION %(%) to %', routine_record.routine_name, routine_record.routine_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON FUNCTION %I(%s) TO %I',
+                routine_record.routine_name,
+                routine_record.routine_args,
+                target_role
+            );
+        -- Check if it's a PROCEDURE
+        ELSIF routine_record.prokind = 'p' THEN
+            RAISE NOTICE 'Granting EXECUTE on PROCEDURE %(%) to %', routine_record.routine_name, routine_record.routine_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON PROCEDURE %I(%s) TO %I',
+                routine_record.routine_name,
+                routine_record.routine_args,
+                target_role
+            );
+        END IF;
+    END LOOP;
+END $$;
+
+
+
+---or for above one------
+
+DO $$
+DECLARE
+    -- Variable to hold the record for each routine found
+    routine_record RECORD;
+    -- The role you are granting privileges TO
+    target_role TEXT := 'va-chatanalysis-5022-np-sa@cb0104074a-citnonprod-gc.iam';
+BEGIN
+    -- Loop through all routines (functions and procedures) owned by the specified roles
+    FOR routine_record IN
+        SELECT
+            p.proname AS routine_name,
+            n.nspname AS schema_name,
+            p.prokind,
+            pg_get_function_identity_arguments(p.oid) AS routine_identity_args,
+            
+            -- This now works because the set-returning function (unnest) is in the FROM clause,
+            -- and the aggregate (string_agg) is in the SELECT list.
+            string_agg(format_type(t.arg_oid, NULL), ', ' ORDER BY t.arg_num) AS routine_simple_signature
+
+        FROM
+            pg_proc p
+        JOIN
+            pg_namespace n ON p.pronamespace = n.oid
+        JOIN
+            pg_roles r ON p.proowner = r.oid
+        -- Use a LEFT JOIN LATERAL to handle routines with zero arguments correctly.
+        -- This "expands" the array of argument types into separate rows.
+        LEFT JOIN LATERAL
+            unnest(p.proargtypes) WITH ORDINALITY AS t(arg_oid, arg_num) ON true
+        WHERE
+            n.nspname != 'DBAdmin'  -- Exclude the DBAdmin schema
+            AND r.rolname IN ('npgke-devops-serviceacc@cb0104074a-citnonprod-gc.iam', 'OneC_5022') -- Filter by owner roles
+            AND p.prokind IN ('f', 'p') -- Only select functions and procedures
+        GROUP BY
+            -- We must group by all non-aggregated columns to collapse the rows back.
+            p.oid, n.nspname, p.proname, p.prokind
+    LOOP
+        -- The logic inside the loop remains the same
+        IF routine_record.prokind = 'f' THEN
+            RAISE NOTICE 'Granting EXECUTE on FUNCTION %.%(%) to %', routine_record.schema_name, routine_record.routine_name, routine_record.routine_identity_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO %I',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                COALESCE(routine_record.routine_simple_signature, ''), -- Use COALESCE for functions with no arguments
+                target_role
+            );
+        ELSIF routine_record.prokind = 'p' THEN
+            RAISE NOTICE 'Granting EXECUTE on PROCEDURE %.%(%) to %', routine_record.schema_name, routine_record.routine_name, routine_record.routine_identity_args, target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON PROCEDURE %I.%I(%s) TO %I',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                COALESCE(routine_record.routine_simple_signature, ''), -- Use COALESCE for procedures with no arguments
+                target_role
+            );
+        END IF;
+    END LOOP;
+END $$;
+
+
+
+-------------or exclude google funcs, system schemas-----------
+
+DO $$
+DECLARE
+    routine_record RECORD;
+    target_role TEXT := 'OneC_4681';
+BEGIN
+    FOR routine_record IN
+        SELECT
+            p.proname AS routine_name,
+            n.nspname AS schema_name,
+            p.prokind,
+            pg_get_function_identity_arguments(p.oid) AS routine_identity_args,
+            string_agg(format_type(t.arg_oid, NULL), ', ' ORDER BY t.arg_num) AS routine_simple_signature
+        FROM
+            pg_proc p
+        JOIN
+            pg_namespace n ON p.pronamespace = n.oid
+        JOIN
+            pg_roles r ON p.proowner = r.oid
+        LEFT JOIN LATERAL
+            unnest(p.proargtypes) WITH ORDINALITY AS t(arg_oid, arg_num) ON true
+        WHERE
+            -- Exclude system and internal schemas
+            n.nspname NOT IN (
+                'pg_catalog',
+                'information_schema',
+                'DBAdmin',
+                'pg_toast',
+                'pg_temp'
+            )
+            -- Exclude Google Cloud advisor / system-injected functions by name pattern
+            AND p.proname NOT LIKE 'google_%'
+            AND p.proname NOT LIKE 'cloudsql_%'
+            AND p.proname NOT LIKE 'alloydb_%'
+            -- Exclude functions not owned by a real (non-system) role
+            --AND r.rolname NOT IN ('cloudsqladmin', 'pg_database_owner', 'rdsadmin')
+            AND p.prokind IN ('f', 'p')
+        GROUP BY
+            p.oid, n.nspname, p.proname, p.prokind
+    LOOP
+        IF routine_record.prokind = 'f' THEN
+            RAISE NOTICE 'Granting EXECUTE on FUNCTION %.%(%) to %',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                routine_record.routine_identity_args,
+                target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON FUNCTION %I.%I(%s) TO %I',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                COALESCE(routine_record.routine_simple_signature, ''),
+                target_role
+            );
+        ELSIF routine_record.prokind = 'p' THEN
+            RAISE NOTICE 'Granting EXECUTE on PROCEDURE %.%(%) to %',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                routine_record.routine_identity_args,
+                target_role;
+            EXECUTE format(
+                'GRANT EXECUTE ON PROCEDURE %I.%I(%s) TO %I',
+                routine_record.schema_name,
+                routine_record.routine_name,
+                COALESCE(routine_record.routine_simple_signature, ''),
+                target_role
+            );
+        END IF;
+    END LOOP;
+END $$;

@@ -1,0 +1,10 @@
+# First, get all Cloud SQL instance names in the project
+gcloud sql instances list --project=cb0104074a-citnonprod-gc
+
+# Then add IAM user to each instance
+# Replace INSTANCE_NAME with each instance name from above
+
+gcloud sql users create "nonproddb-devops-sa@cb0104074a-citnonprod-gc.iam" \
+    --instance=ctsgcukdevpostgresql01 \
+    --project=cb0104074a-citnonprod-gc \
+    --type=cloud_iam_service_account
