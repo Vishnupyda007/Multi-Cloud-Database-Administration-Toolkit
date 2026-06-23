@@ -1,0 +1,3118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PostgreSQL Complete Learning Guide</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #161b27;
+    --bg3: #1e2535;
+    --bg4: #252d40;
+    --border: #2a3348;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --accent: #3b82f6;
+    --accent2: #1d4ed8;
+    --green: #10b981;
+    --green2: #065f46;
+    --amber: #f59e0b;
+    --amber2: #78350f;
+    --red: #ef4444;
+    --red2: #7f1d1d;
+    --purple: #8b5cf6;
+    --cyan: #06b6d4;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 15px; line-height: 1.7; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: 280px; min-width: 280px; background: var(--bg2); border-right: 1px solid var(--border);
+    height: 100vh; position: sticky; top: 0; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .sidebar-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-header h1 { font-size: 17px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; }
+  .logo { width: 32px; height: 32px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .sidebar-header p { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .progress-bar-wrap { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .progress-label { font-size: 11px; color: var(--text3); display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .progress-bar { height: 4px; background: var(--bg4); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #3b82f6, #8b5cf6); border-radius: 4px; transition: width 0.4s ease; }
+  .nav-section { padding: 10px 12px 4px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 20px; cursor: pointer;
+    font-size: 13.5px; color: var(--text2); transition: all 0.15s; border: none; background: none;
+    width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active { background: rgba(59,130,246,0.15); color: #60a5fa; border-right: 2px solid var(--accent); }
+  .nav-item .num { width: 22px; height: 22px; border-radius: 6px; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text3); flex-shrink: 0; }
+  .nav-item.active .num { background: rgba(59,130,246,0.25); color: var(--accent); }
+  .nav-item.done .num { background: rgba(16,185,129,0.2); color: var(--green); }
+  .nav-item.done .num::after { content: '✓'; }
+
+  /* MAIN */
+  #main { flex: 1; overflow-y: auto; }
+  #main::-webkit-scrollbar { width: 6px; }
+  #main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .module { display: none; max-width: 860px; margin: 0 auto; padding: 40px 48px 80px; }
+  .module.active { display: block; }
+  .module-header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+  .module-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .badge-beginner { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge-intermediate { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .badge-advanced { background: rgba(139,92,246,0.15); color: var(--purple); }
+  .module h1 { font-size: 30px; font-weight: 800; color: var(--text); line-height: 1.2; margin-bottom: 12px; }
+  .module-meta { font-size: 13px; color: var(--text3); display: flex; gap: 16px; }
+  .module-meta span { display: flex; align-items: center; gap: 5px; }
+
+  .module h2 { font-size: 20px; font-weight: 700; color: var(--text); margin: 36px 0 14px; padding-top: 4px; }
+  .module h3 { font-size: 16px; font-weight: 600; color: #93c5fd; margin: 24px 0 10px; }
+  .module p { color: var(--text2); margin-bottom: 14px; }
+  .module ul, .module ol { color: var(--text2); padding-left: 22px; margin-bottom: 14px; }
+  .module li { margin-bottom: 6px; }
+
+  /* CODE BLOCKS */
+  .code-block { background: #0d1117; border: 1px solid var(--border); border-radius: 10px; margin: 16px 0 24px; overflow: hidden; }
+  .code-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--bg3); border-bottom: 1px solid var(--border); }
+  .code-label { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 8px; }
+  .code-label .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-sql { background: #3b82f6; }
+  .dot-result { background: #10b981; }
+  .dot-bash { background: #f59e0b; }
+  .copy-btn {
+    font-size: 11px; color: var(--text3); background: var(--bg4); border: 1px solid var(--border);
+    border-radius: 5px; padding: 3px 10px; cursor: pointer; transition: all 0.15s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--text3); }
+  pre { padding: 18px 20px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; }
+  pre::-webkit-scrollbar { height: 4px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Syntax colors */
+  .kw { color: #ff7b72; font-weight: 600; }
+  .fn { color: #d2a8ff; }
+  .str { color: #a5d6ff; }
+  .num { color: #79c0ff; }
+  .cmt { color: #8b949e; font-style: italic; }
+  .tbl { color: #ffa657; }
+  .col { color: #e2e8f0; }
+  .op { color: #ff7b72; }
+  .kw2 { color: #7ee787; }
+
+  /* CALLOUT BOXES */
+  .callout { border-radius: 10px; padding: 16px 20px; margin: 20px 0; display: flex; gap: 14px; }
+  .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .callout-body p { font-size: 13.5px; margin: 0; }
+  .callout.tip { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); }
+  .callout.tip .callout-body h4 { color: var(--green); }
+  .callout.warning { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+  .callout.warning .callout-body h4 { color: var(--amber); }
+  .callout.info { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.25); }
+  .callout.info .callout-body h4 { color: #60a5fa; }
+  .callout.compare { background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); }
+  .callout.compare .callout-body h4 { color: #a78bfa; }
+
+  /* TABLES */
+  .table-wrap { overflow-x: auto; margin: 16px 0 24px; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { background: var(--bg3); color: var(--text); font-weight: 600; padding: 10px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 16px; color: var(--text2); border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+  td code, th code { font-family: var(--mono); font-size: 12.5px; background: var(--bg4); padding: 1px 6px; border-radius: 4px; color: #a5d6ff; }
+
+  /* INLINE CODE */
+  .module code { font-family: var(--mono); font-size: 13px; background: var(--bg3); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: #a5d6ff; }
+
+  /* NAV BUTTONS */
+  .nav-buttons { display: flex; justify-content: space-between; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .nav-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); background: var(--bg2); color: var(--text2); font-family: var(--font); }
+  .nav-btn:hover { background: var(--bg3); color: var(--text); border-color: var(--text3); }
+  .nav-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* GRID CARDS */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 20px 0; }
+  .card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+  .card h4 { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .card p { font-size: 13px; color: var(--text2); margin: 0; }
+  .card .card-icon { font-size: 22px; margin-bottom: 10px; }
+
+  /* RESULT TABLE */
+  .result-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 13px; }
+  .result-table th { background: #161b27; color: #60a5fa; padding: 8px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  .result-table td { padding: 7px 14px; color: var(--text2); border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .result-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* STEP INDICATORS */
+  .steps { margin: 20px 0; }
+  .step { display: flex; gap: 16px; margin-bottom: 24px; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: rgba(59,130,246,0.2); border: 1.5px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+  .step-content h4 { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .step-content p { font-size: 13.5px; color: var(--text2); margin: 0; }
+
+  /* QUIZ */
+  .quiz-box { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin: 28px 0; }
+  .quiz-box h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-opt { padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg4); color: var(--text2); cursor: pointer; font-size: 13.5px; transition: all 0.15s; text-align: left; font-family: var(--font); }
+  .quiz-opt:hover { border-color: var(--accent); color: var(--text); }
+  .quiz-opt.correct { background: rgba(16,185,129,0.12); border-color: var(--green); color: var(--green); }
+  .quiz-opt.wrong { background: rgba(239,68,68,0.1); border-color: var(--red); color: var(--red); }
+  .quiz-feedback { margin-top: 12px; font-size: 13.5px; padding: 10px 14px; border-radius: 8px; display: none; }
+  .quiz-feedback.show { display: block; }
+  .quiz-feedback.ok { background: rgba(16,185,129,0.1); color: var(--green); }
+  .quiz-feedback.no { background: rgba(239,68,68,0.08); color: var(--red); }
+
+  /* TAG */
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; margin: 2px; }
+  .tag-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .tag-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .tag-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+
+  /* WELCOME HERO */
+  .hero { text-align: center; padding: 48px 0 40px; }
+  .hero-logo { font-size: 60px; margin-bottom: 16px; }
+  .hero h1 { font-size: 36px; font-weight: 900; background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+  .hero p { font-size: 17px; color: var(--text2); max-width: 560px; margin: 0 auto 32px; line-height: 1.6; }
+  .hero-stats { display: flex; justify-content: center; gap: 40px; margin-bottom: 40px; }
+  .hero-stat { text-align: center; }
+  .hero-stat .val { font-size: 26px; font-weight: 800; color: var(--text); }
+  .hero-stat .lbl { font-size: 12px; color: var(--text3); }
+  .start-btn { background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none; color: #fff; font-size: 16px; font-weight: 700; padding: 14px 36px; border-radius: 12px; cursor: pointer; font-family: var(--font); transition: transform 0.1s; }
+  .start-btn:hover { transform: translateY(-2px); }
+
+  .path-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin: 32px 0; }
+  .path-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; transition: border-color 0.15s; }
+  .path-card:hover { border-color: var(--accent); }
+  .path-card .icon { font-size: 28px; margin-bottom: 10px; }
+  .path-card h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .path-card p { font-size: 12.5px; color: var(--text2); margin: 0; }
+
+  @media(max-width: 900px) {
+    #sidebar { width: 240px; min-width: 240px; }
+    .module { padding: 24px 24px 60px; }
+    .path-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-header">
+    <h1><div class="logo">🐘</div> PostgreSQL Guide</h1>
+    <p>From Zero to Production</p>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-label"><span>Your progress</span><span id="prog-pct">0%</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <div class="nav-section">Getting Started</div>
+  <button class="nav-item active" onclick="showModule(0)" id="nav-0"><div class="num">0</div> Welcome & Overview</button>
+  <button class="nav-item" onclick="showModule(1)" id="nav-1"><div class="num">1</div> What is PostgreSQL?</button>
+  <button class="nav-item" onclick="showModule(2)" id="nav-2"><div class="num">2</div> Installation & Setup</button>
+  <div class="nav-section">Core SQL</div>
+  <button class="nav-item" onclick="showModule(3)" id="nav-3"><div class="num">3</div> Databases & Tables</button>
+  <button class="nav-item" onclick="showModule(4)" id="nav-4"><div class="num">4</div> Data Types</button>
+  <button class="nav-item" onclick="showModule(5)" id="nav-5"><div class="num">5</div> INSERT — Adding Data</button>
+  <button class="nav-item" onclick="showModule(6)" id="nav-6"><div class="num">6</div> SELECT — Querying Data</button>
+  <button class="nav-item" onclick="showModule(7)" id="nav-7"><div class="num">7</div> UPDATE & DELETE</button>
+  <div class="nav-section">Intermediate</div>
+  <button class="nav-item" onclick="showModule(8)" id="nav-8"><div class="num">8</div> Filtering & Sorting</button>
+  <button class="nav-item" onclick="showModule(9)" id="nav-9"><div class="num">9</div> Joins</button>
+  <button class="nav-item" onclick="showModule(10)" id="nav-10"><div class="num">10</div> Aggregations</button>
+  <button class="nav-item" onclick="showModule(11)" id="nav-11"><div class="num">11</div> Indexes</button>
+  <button class="nav-item" onclick="showModule(12)" id="nav-12"><div class="num">12</div> Constraints</button>
+  <div class="nav-section">Advanced</div>
+  <button class="nav-item" onclick="showModule(13)" id="nav-13"><div class="num">13</div> Transactions</button>
+  <button class="nav-item" onclick="showModule(14)" id="nav-14"><div class="num">14</div> Views & CTEs</button>
+  <button class="nav-item" onclick="showModule(15)" id="nav-15"><div class="num">15</div> Window Functions</button>
+  <button class="nav-item" onclick="showModule(16)" id="nav-16"><div class="num">16</div> Stored Functions</button>
+  <button class="nav-item" onclick="showModule(17)" id="nav-17"><div class="num">17</div> JSON & JSONB</button>
+  <div class="nav-section">Production</div>
+  <button class="nav-item" onclick="showModule(18)" id="nav-18"><div class="num">18</div> Performance & EXPLAIN</button>
+  <button class="nav-item" onclick="showModule(19)" id="nav-19"><div class="num">19</div> Logical Replication — Overview</button>
+  <button class="nav-item" onclick="showModule(20)" id="nav-20"><div class="num">20</div> Cloud SQL Cheatsheet</button>
+  <div class="nav-section">AI/ML & Modern</div>
+  <button class="nav-item" onclick="showModule(21)" id="nav-21"><div class="num">21</div> Table Partitioning</button>
+  <button class="nav-item" onclick="showModule(22)" id="nav-22"><div class="num">22</div> Row-Level Security</button>
+  <button class="nav-item" onclick="showModule(23)" id="nav-23"><div class="num">23</div> Extensions Deep Dive</button>
+  <button class="nav-item" onclick="showModule(24)" id="nav-24"><div class="num">24</div> pgvector — AI & Embeddings</button>
+  <button class="nav-item" onclick="showModule(25)" id="nav-25"><div class="num">25</div> PostGIS — Geo Queries</button>
+  <div class="nav-section">DBA & DevOps</div>
+  <button class="nav-item" onclick="showModule(26)" id="nav-26"><div class="num">26</div> Schema Migrations</button>
+  <button class="nav-item" onclick="showModule(27)" id="nav-27"><div class="num">27</div> Connection Pooling</button>
+  <button class="nav-item" onclick="showModule(28)" id="nav-28"><div class="num">28</div> Backup & Recovery</button>
+  <button class="nav-item" onclick="showModule(29)" id="nav-29"><div class="num">29</div> Query Optimization</button>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main id="main">
+
+<!-- MODULE 0: WELCOME -->
+<section class="module active" id="mod-0">
+  <div class="hero">
+    <div class="hero-logo">🐘</div>
+    <h1>PostgreSQL Mastery Guide</h1>
+    <p>A complete learning path from absolute zero to production-ready PostgreSQL developer — with real examples, SQL comparisons, and best practices.</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="val">30</div><div class="lbl">Modules</div></div>
+      <div class="hero-stat"><div class="val">150+</div><div class="lbl">SQL Examples</div></div>
+      <div class="hero-stat"><div class="val">0→Pro</div><div class="lbl">Skill Jump</div></div>
+    </div>
+    <button class="start-btn" onclick="showModule(1)">Start Learning →</button>
+  </div>
+
+  <div class="path-grid">
+    <div class="path-card">
+      <div class="icon">🌱</div>
+      <h4>Beginner (1–7)</h4>
+      <p>Databases, tables, data types, CRUD operations. No prior SQL knowledge needed.</p>
+    </div>
+    <div class="path-card">
+      <div class="icon">⚙️</div>
+      <h4>Intermediate (8–12)</h4>
+      <p>Filtering, joins, aggregations, indexes, and constraints for real applications.</p>
+    </div>
+    <div class="path-card">
+      <div class="icon">🤖</div>
+      <h4>AI/ML & DevOps (21–29)</h4>
+      <p>Partitioning, RLS, pgvector embeddings, PostGIS, migrations, PgBouncer, backups, query optimization.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <h4>Coming from SQL Server?</h4>
+      <p>Throughout this guide, you'll find SQL Server → PostgreSQL comparison notes highlighted in purple. PostgreSQL uses simpler, cleaner syntax — you'll feel right at home quickly.</p>
+    </div>
+  </div>
+  <div class="nav-buttons">
+    <div></div>
+    <button class="nav-btn primary" onclick="showModule(1)">Module 1: What is PostgreSQL? →</button>
+  </div>
+</section>
+
+<!-- MODULE 1: WHAT IS POSTGRESQL -->
+<section class="module" id="mod-1">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>What is PostgreSQL?</h1>
+    <div class="module-meta">
+      <span>📖 10 min read</span>
+      <span>🎯 Foundation</span>
+    </div>
+  </div>
+
+  <p>PostgreSQL (pronounced <em>post-gress-Q-L</em>, often called Postgres) is a powerful, open-source relational database system with over 35 years of active development. It is trusted by companies like Apple, Instagram, Spotify, Reddit, and countless others.</p>
+
+  <h2>Why PostgreSQL?</h2>
+  <div class="card-grid">
+    <div class="card"><div class="card-icon">🆓</div><h4>Free & Open Source</h4><p>No licensing costs. Backed by a vibrant global community since 1986.</p></div>
+    <div class="card"><div class="card-icon">🔒</div><h4>ACID Compliant</h4><p>Rock-solid transactions — Atomicity, Consistency, Isolation, Durability guaranteed.</p></div>
+    <div class="card"><div class="card-icon">🧩</div><h4>Extensible</h4><p>Custom data types, functions, operators, and extensions like PostGIS, pgvector.</p></div>
+    <div class="card"><div class="card-icon">📊</div><h4>SQL Standard</h4><p>Most SQL-standard compliant RDBMS available. Your SQL skills transfer directly.</p></div>
+    <div class="card"><div class="card-icon">🌐</div><h4>JSON & NoSQL</h4><p>Full JSONB support means relational + document storage in one database.</p></div>
+    <div class="card"><div class="card-icon">⚡</div><h4>High Performance</h4><p>Parallel queries, advanced indexing (B-tree, GIN, GiST, BRIN), partitioning.</p></div>
+  </div>
+
+  <h2>PostgreSQL vs SQL Server — At a Glance</h2>
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server Background</h4>
+      <p>If you know SQL Server, PostgreSQL will feel familiar. The SQL syntax is very similar. The key differences are in tooling (pgAdmin vs SSMS), object ownership (schemas work differently), and configuration (no GUI wizard — everything is SQL commands).</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Concept</th><th>SQL Server</th><th>PostgreSQL</th></tr></thead>
+      <tbody>
+        <tr><td>GUI Tool</td><td>SSMS</td><td>pgAdmin 4, DBeaver</td></tr>
+        <tr><td>CLI Tool</td><td>sqlcmd</td><td><code>psql</code></td></tr>
+        <tr><td>Default Port</td><td>1433</td><td>5432</td></tr>
+        <tr><td>Auto-increment</td><td><code>IDENTITY(1,1)</code></td><td><code>SERIAL</code> or <code>GENERATED ALWAYS AS IDENTITY</code></td></tr>
+        <tr><td>String type</td><td><code>NVARCHAR(n)</code></td><td><code>VARCHAR(n)</code> or <code>TEXT</code></td></tr>
+        <tr><td>Top N rows</td><td><code>SELECT TOP 10</code></td><td><code>SELECT ... LIMIT 10</code></td></tr>
+        <tr><td>If-then logic</td><td><code>IF/ELSE</code></td><td><code>CASE WHEN</code> or PL/pgSQL</td></tr>
+        <tr><td>Current timestamp</td><td><code>GETDATE()</code></td><td><code>NOW()</code></td></tr>
+        <tr><td>String concat</td><td><code>+</code></td><td><code>||</code> or <code>CONCAT()</code></td></tr>
+        <tr><td>Boolean</td><td><code>BIT</code></td><td><code>BOOLEAN</code> (true/false)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>The PostgreSQL Architecture</h2>
+  <p>Understanding the architecture helps you manage and troubleshoot your database. Here's the hierarchy:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content"><h4>PostgreSQL Server (Instance)</h4><p>The running database server process. One server can host many databases.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content"><h4>Database</h4><p>An isolated container. Each database has its own users, schemas, and tables. (e.g., <code>myapp_db</code>)</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content"><h4>Schema</h4><p>A namespace inside a database. The default schema is <code>public</code>. You can create schemas like <code>sales</code>, <code>hr</code>.</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content"><h4>Table</h4><p>Where data lives — rows and columns. Belongs to a schema. Full name: <code>schema.table</code> → <code>public.orders</code></p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content"><h4>Row (Tuple)</h4><p>A single record in a table. PostgreSQL calls rows "tuples" internally.</p></div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(0)">← Welcome</button>
+    <button class="nav-btn primary" onclick="showModule(2)">Installation & Setup →</button>
+  </div>
+</section>
+
+<!-- MODULE 2: INSTALLATION -->
+<section class="module" id="mod-2">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>Installation & Setup</h1>
+    <div class="module-meta"><span>📖 15 min</span><span>🛠 Hands-on</span></div>
+  </div>
+
+  <h2>Option 1: Cloud SQL (Google Cloud)</h2>
+  <p>Since your project uses Cloud SQL, this is your primary environment. Cloud SQL is a fully managed PostgreSQL service — no server to maintain.</p>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-content"><h4>Create Instance</h4><p>Google Cloud Console → SQL → Create Instance → Choose PostgreSQL → Select version 17</p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><h4>Set Root Password</h4><p>Set a strong password for the <code>postgres</code> superuser during creation.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><h4>Connect via pgAdmin</h4><p>Add a new server in pgAdmin with your Cloud SQL instance's public IP, port 5432, and credentials.</p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><h4>Connect via psql</h4><p>Use the Cloud SQL Auth Proxy or direct IP connection from your terminal.</p></div></div>
+  </div>
+
+  <h2>Option 2: Local Installation</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div>Windows</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt"># Download installer from: https://www.postgresql.org/download/windows/
+# Run the installer, choose version 16 or 17
+# Installs PostgreSQL + pgAdmin 4 automatically
+# Default port: 5432, set postgres password during install</span></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div>macOS</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt"># Option 1: Homebrew (recommended)</span>
+brew install postgresql@17
+brew services start postgresql@17
+
+<span class="cmt"># Option 2: Postgres.app from postgresapp.com
+# Drag to Applications, click Initialize</span></pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div>Ubuntu / Debian Linux</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre>sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql</pre>
+  </div>
+
+  <h2>The psql Command Line Tool</h2>
+  <p><code>psql</code> is your best friend — a powerful interactive terminal for PostgreSQL. Think of it as sqlcmd but much more powerful.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div>Essential psql Commands</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt"># Connect to PostgreSQL</span>
+psql -h localhost -U postgres -d mydb
+
+<span class="cmt"># Once inside psql:</span>
+\l          <span class="cmt">-- list all databases</span>
+\c mydb     <span class="cmt">-- connect to database "mydb"</span>
+\dt         <span class="cmt">-- list all tables in current schema</span>
+\d orders   <span class="cmt">-- describe table structure</span>
+\du         <span class="cmt">-- list all users/roles</span>
+\i file.sql <span class="cmt">-- run SQL from a file</span>
+\timing     <span class="cmt">-- toggle query timing on/off</span>
+\q          <span class="cmt">-- quit psql</span></pre>
+  </div>
+
+  <h2>pgAdmin 4 — GUI Tool</h2>
+  <p>pgAdmin is the official web-based GUI for PostgreSQL (equivalent to SSMS for SQL Server). Download from <strong>pgadmin.org</strong>.</p>
+  <div class="callout tip">
+    <div class="callout-icon">✅</div>
+    <div class="callout-body">
+      <h4>pgAdmin Quick Start</h4>
+      <p>After installing: Add New Server → Name it anything → Connection tab → fill in Host, Port (5432), Username, Password → Save. You're connected!</p>
+    </div>
+  </div>
+
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server → PostgreSQL Tool Mapping</h4>
+      <p>SSMS Object Explorer = pgAdmin's left panel. SSMS Query Editor = pgAdmin's Query Tool (press F5 or click the play button to execute). SQL Server Profiler = pgAdmin's Explain tab + pg_stat_statements extension.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(1)">← What is PostgreSQL?</button>
+    <button class="nav-btn primary" onclick="showModule(3)">Databases & Tables →</button>
+  </div>
+</section>
+
+<!-- MODULE 3: DATABASES & TABLES -->
+<section class="module" id="mod-3">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>Databases & Tables</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🛠 Hands-on</span></div>
+  </div>
+
+  <p>Let's build our first database and tables. We'll create a simple e-commerce system throughout this guide — customers, orders, and products.</p>
+
+  <h2>Creating a Database</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>SQL</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Create a new database</span>
+<span class="kw">CREATE DATABASE</span> ecommerce;
+
+<span class="cmt">-- Connect to it (in psql)</span>
+<span class="kw">\c</span> ecommerce
+
+<span class="cmt">-- Drop a database (careful — irreversible!)</span>
+<span class="kw">DROP DATABASE</span> ecommerce;
+
+<span class="cmt">-- List all databases</span>
+<span class="kw">SELECT</span> datname <span class="kw">FROM</span> pg_database;
+</pre>
+  </div>
+
+  <h2>Creating Tables</h2>
+  <p>The <code>CREATE TABLE</code> statement defines the structure of your data. Each column has a name and a data type.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Create customers table</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">customers</span> (
+    customer_id   <span class="kw2">SERIAL</span>        <span class="kw">PRIMARY KEY</span>,
+    first_name    <span class="kw2">VARCHAR</span>(100)  <span class="kw">NOT NULL</span>,
+    last_name     <span class="kw2">VARCHAR</span>(100)  <span class="kw">NOT NULL</span>,
+    email         <span class="kw2">VARCHAR</span>(255)  <span class="kw">UNIQUE NOT NULL</span>,
+    phone         <span class="kw2">VARCHAR</span>(20),
+    city          <span class="kw2">VARCHAR</span>(100),
+    created_at    <span class="kw2">TIMESTAMP</span>     <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Create products table</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">products</span> (
+    product_id    <span class="kw2">SERIAL</span>          <span class="kw">PRIMARY KEY</span>,
+    name          <span class="kw2">VARCHAR</span>(200)    <span class="kw">NOT NULL</span>,
+    category      <span class="kw2">VARCHAR</span>(100),
+    price         <span class="kw2">NUMERIC</span>(10,2)   <span class="kw">NOT NULL</span>,
+    stock_qty     <span class="kw2">INTEGER</span>         <span class="kw">DEFAULT</span> <span class="num">0</span>,
+    is_active     <span class="kw2">BOOLEAN</span>         <span class="kw">DEFAULT</span> <span class="kw2">TRUE</span>,
+    created_at    <span class="kw2">TIMESTAMP</span>       <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Create orders table</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">orders</span> (
+    order_id      <span class="kw2">SERIAL</span>          <span class="kw">PRIMARY KEY</span>,
+    customer_id   <span class="kw2">INTEGER</span>         <span class="kw">NOT NULL REFERENCES</span> <span class="tbl">customers</span>(customer_id),
+    order_date    <span class="kw2">TIMESTAMP</span>       <span class="kw">DEFAULT</span> <span class="fn">NOW</span>(),
+    total_amount  <span class="kw2">NUMERIC</span>(12,2)   <span class="kw">NOT NULL DEFAULT</span> <span class="num">0</span>,
+    status        <span class="kw2">VARCHAR</span>(50)     <span class="kw">DEFAULT</span> <span class="str">'pending'</span>,
+    notes         <span class="kw2">TEXT</span>
+);</pre>
+  </div>
+
+  <h2>Modifying Tables (ALTER TABLE)</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>ALTER TABLE examples</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Add a column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">ADD COLUMN</span> country <span class="kw2">VARCHAR</span>(100);
+
+<span class="cmt">-- Remove a column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">DROP COLUMN</span> phone;
+
+<span class="cmt">-- Rename a column</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">RENAME COLUMN</span> city <span class="kw">TO</span> city_name;
+
+<span class="cmt">-- Change a column's data type</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">products</span> <span class="kw">ALTER COLUMN</span> stock_qty <span class="kw">TYPE</span> <span class="kw2">BIGINT</span>;
+
+<span class="cmt">-- Rename a table</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">products</span> <span class="kw">RENAME TO</span> <span class="tbl">catalog</span>;
+
+<span class="cmt">-- Drop a table (irreversible!)</span>
+<span class="kw">DROP TABLE</span> <span class="kw">IF EXISTS</span> <span class="tbl">old_table</span>;</pre>
+  </div>
+
+  <h2>Inspecting Your Tables</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>View table structure</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- List all tables in public schema</span>
+<span class="kw">SELECT</span> table_name <span class="kw">FROM</span> information_schema.tables
+<span class="kw">WHERE</span> table_schema = <span class="str">'public'</span>;
+
+<span class="cmt">-- Show columns of a table</span>
+<span class="kw">SELECT</span> column_name, data_type, is_nullable, column_default
+<span class="kw">FROM</span> information_schema.columns
+<span class="kw">WHERE</span> table_name = <span class="str">'customers'</span>;
+
+<span class="cmt">-- In psql: quick describe table</span>
+\d customers</pre>
+  </div>
+
+  <div class="quiz-box">
+    <h4>Quick Check: What does <code>SERIAL</code> do in PostgreSQL?</h4>
+    <div class="quiz-options">
+      <button class="quiz-opt" onclick="quiz(this,'wrong')">A. Creates a text column with a serial number</button>
+      <button class="quiz-opt" onclick="quiz(this,'correct')">B. Creates an auto-incrementing integer column</button>
+      <button class="quiz-opt" onclick="quiz(this,'wrong')">C. Creates a unique constraint on a column</button>
+      <button class="quiz-opt" onclick="quiz(this,'wrong')">D. Creates a floating point number column</button>
+    </div>
+    <div class="quiz-feedback ok">✅ Correct! SERIAL is shorthand for an integer column backed by a sequence — equivalent to IDENTITY(1,1) in SQL Server. Each new row gets the next number automatically.</div>
+    <div class="quiz-feedback no">❌ Not quite. SERIAL creates an auto-incrementing integer — like IDENTITY(1,1) in SQL Server. Each INSERT gets the next number automatically.</div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(2)">← Installation</button>
+    <button class="nav-btn primary" onclick="showModule(4)">Data Types →</button>
+  </div>
+</section>
+
+<!-- MODULE 4: DATA TYPES -->
+<section class="module" id="mod-4">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>Data Types</h1>
+    <div class="module-meta"><span>📖 15 min</span><span>🎯 Reference</span></div>
+  </div>
+  <p>Choosing the right data type is crucial for correctness, performance, and storage efficiency. PostgreSQL has a very rich type system.</p>
+
+  <h2>Numeric Types</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Storage</th><th>Range / Use</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>SMALLINT</code></td><td>2 bytes</td><td>-32768 to 32767</td><td>Age, rating (1-5)</td></tr>
+      <tr><td><code>INTEGER</code> / <code>INT</code></td><td>4 bytes</td><td>-2 billion to 2 billion</td><td>IDs, counts</td></tr>
+      <tr><td><code>BIGINT</code></td><td>8 bytes</td><td>±9 quintillion</td><td>Large counters, user IDs</td></tr>
+      <tr><td><code>NUMERIC(p,s)</code></td><td>Variable</td><td>Exact decimal, p digits, s after decimal</td><td>Money: NUMERIC(12,2)</td></tr>
+      <tr><td><code>DECIMAL(p,s)</code></td><td>Variable</td><td>Same as NUMERIC</td><td>Prices, financial values</td></tr>
+      <tr><td><code>REAL</code></td><td>4 bytes</td><td>6 decimal digits precision</td><td>Scientific measurements</td></tr>
+      <tr><td><code>DOUBLE PRECISION</code></td><td>8 bytes</td><td>15 decimal digits precision</td><td>GPS coordinates</td></tr>
+      <tr><td><code>SERIAL</code></td><td>4 bytes</td><td>Auto-increment integer</td><td>Primary keys</td></tr>
+      <tr><td><code>BIGSERIAL</code></td><td>8 bytes</td><td>Auto-increment bigint</td><td>High-volume primary keys</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Text Types</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Description</th><th>When to Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>CHAR(n)</code></td><td>Fixed-length, padded with spaces</td><td>Fixed codes like 'US', 'IN' (country codes)</td></tr>
+      <tr><td><code>VARCHAR(n)</code></td><td>Variable-length, max n characters</td><td>Names, emails, URLs with known max length</td></tr>
+      <tr><td><code>TEXT</code></td><td>Unlimited length string</td><td>Descriptions, articles, any long text</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <h4>PostgreSQL Pro Tip: Use TEXT liberally</h4>
+      <p>In PostgreSQL, TEXT and VARCHAR(n) have identical performance. Unlike SQL Server, there's no NVARCHAR needed — TEXT handles Unicode automatically. Use TEXT when you don't have a strong reason to limit length.</p>
+    </div>
+  </div>
+
+  <h2>Date & Time Types</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Description</th><th>Example Value</th></tr></thead>
+    <tbody>
+      <tr><td><code>DATE</code></td><td>Date only (no time)</td><td>'2025-01-15'</td></tr>
+      <tr><td><code>TIME</code></td><td>Time of day</td><td>'14:30:00'</td></tr>
+      <tr><td><code>TIMESTAMP</code></td><td>Date + time, no timezone</td><td>'2025-01-15 14:30:00'</td></tr>
+      <tr><td><code>TIMESTAMPTZ</code></td><td>Date + time WITH timezone</td><td>'2025-01-15 14:30:00+05:30'</td></tr>
+      <tr><td><code>INTERVAL</code></td><td>Duration</td><td>'3 days', '2 hours 30 minutes'</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server → PostgreSQL Date Functions</h4>
+      <p><code>GETDATE()</code> → <code>NOW()</code> or <code>CURRENT_TIMESTAMP</code><br>
+      <code>DATEADD(day, 7, date)</code> → <code>date + INTERVAL '7 days'</code><br>
+      <code>DATEDIFF(day, start, end)</code> → <code>end::date - start::date</code></p>
+    </div>
+  </div>
+
+  <h2>Other Important Types</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Description</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>BOOLEAN</code></td><td>True or false</td><td>TRUE, FALSE, 't', 'f', 'yes', 'no', 1, 0</td></tr>
+      <tr><td><code>UUID</code></td><td>Universally unique identifier</td><td>'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'</td></tr>
+      <tr><td><code>JSON</code></td><td>JSON text stored as-is</td><td>'{"key": "value"}'</td></tr>
+      <tr><td><code>JSONB</code></td><td>JSON stored in binary (faster queries)</td><td>'{"key": "value"}' — use this!</td></tr>
+      <tr><td><code>ARRAY</code></td><td>Array of any type</td><td>ARRAY[1,2,3] or INTEGER[]</td></tr>
+      <tr><td><code>ENUM</code></td><td>Custom list of allowed values</td><td>CREATE TYPE status AS ENUM('active','inactive')</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Type Casting</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Casting types</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Two ways to cast in PostgreSQL</span>
+
+<span class="cmt">-- Method 1: :: operator (PostgreSQL style)</span>
+<span class="kw">SELECT</span> <span class="str">'42'</span>::<span class="kw2">INTEGER</span>;                  <span class="cmt">-- text to integer</span>
+<span class="kw">SELECT</span> <span class="str">'2025-01-15'</span>::<span class="kw2">DATE</span>;            <span class="cmt">-- text to date</span>
+<span class="kw">SELECT</span> price::<span class="kw2">TEXT</span> <span class="kw">FROM</span> <span class="tbl">products</span>;    <span class="cmt">-- numeric to text</span>
+
+<span class="cmt">-- Method 2: CAST() function (SQL standard)</span>
+<span class="kw">SELECT</span> <span class="fn">CAST</span>(<span class="str">'42'</span> <span class="kw">AS</span> <span class="kw2">INTEGER</span>);
+<span class="kw">SELECT</span> <span class="fn">CAST</span>(<span class="fn">NOW</span>() <span class="kw">AS</span> <span class="kw2">DATE</span>);          <span class="cmt">-- timestamp to date</span></pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(3)">← Databases & Tables</button>
+    <button class="nav-btn primary" onclick="showModule(5)">INSERT — Adding Data →</button>
+  </div>
+</section>
+
+<!-- MODULE 5: INSERT -->
+<section class="module" id="mod-5">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>INSERT — Adding Data</h1>
+    <div class="module-meta"><span>📖 15 min</span><span>🛠 Hands-on</span></div>
+  </div>
+  <p>The <code>INSERT INTO</code> statement adds new rows to a table. Let's populate our e-commerce tables.</p>
+
+  <h2>Basic INSERT</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Single row insert</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Insert a single customer</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">customers</span> (first_name, last_name, email, city)
+<span class="kw">VALUES</span> (<span class="str">'Priya'</span>, <span class="str">'Sharma'</span>, <span class="str">'priya@example.com'</span>, <span class="str">'Hyderabad'</span>);
+
+<span class="cmt">-- Note: customer_id and created_at are auto-generated (SERIAL + DEFAULT)</span></pre>
+  </div>
+
+  <h2>INSERT Multiple Rows</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Bulk insert</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">INSERT INTO</span> <span class="tbl">customers</span> (first_name, last_name, email, city)
+<span class="kw">VALUES</span>
+    (<span class="str">'Rahul'</span>,   <span class="str">'Verma'</span>,   <span class="str">'rahul@example.com'</span>,   <span class="str">'Mumbai'</span>),
+    (<span class="str">'Anjali'</span>,  <span class="str">'Patel'</span>,   <span class="str">'anjali@example.com'</span>,  <span class="str">'Bangalore'</span>),
+    (<span class="str">'Suresh'</span>,  <span class="str">'Kumar'</span>,   <span class="str">'suresh@example.com'</span>,  <span class="str">'Chennai'</span>),
+    (<span class="str">'Deepika'</span>, <span class="str">'Nair'</span>,    <span class="str">'deepika@example.com'</span>, <span class="str">'Kochi'</span>);
+
+<span class="cmt">-- PostgreSQL inserts all 4 rows in one statement</span></pre>
+  </div>
+
+  <h2>INSERT Products</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Insert product data</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">INSERT INTO</span> <span class="tbl">products</span> (name, category, price, stock_qty)
+<span class="kw">VALUES</span>
+    (<span class="str">'Laptop Pro 15"'</span>,    <span class="str">'Electronics'</span>,  <span class="num">85000.00</span>, <span class="num">25</span>),
+    (<span class="str">'Wireless Mouse'</span>,    <span class="str">'Electronics'</span>,  <span class="num">1299.00</span>,  <span class="num">150</span>),
+    (<span class="str">'Office Desk Chair'</span>, <span class="str">'Furniture'</span>,     <span class="num">12500.00</span>, <span class="num">40</span>),
+    (<span class="str">'Coffee Maker'</span>,      <span class="str">'Appliances'</span>,    <span class="num">4500.00</span>,  <span class="num">60</span>),
+    (<span class="str">'Notebook A4 Pack'</span>,  <span class="str">'Stationery'</span>,    <span class="num">250.00</span>,   <span class="num">500</span>);</pre>
+  </div>
+
+  <h2>INSERT with RETURNING</h2>
+  <p>This is a powerful PostgreSQL feature with no SQL Server equivalent. You can get back the inserted row's data immediately — very useful for getting auto-generated IDs.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>INSERT ... RETURNING</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Get the new customer_id right after inserting</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">customers</span> (first_name, last_name, email)
+<span class="kw">VALUES</span> (<span class="str">'Vikram'</span>, <span class="str">'Singh'</span>, <span class="str">'vikram@example.com'</span>)
+<span class="kw">RETURNING</span> customer_id, created_at;
+
+<span class="cmt">-- Returns:
+-- customer_id |        created_at
+-- ────────────+──────────────────────────
+--           6 | 2025-06-18 10:30:00.123</span></pre>
+  </div>
+
+  <h2>UPSERT — INSERT or UPDATE (ON CONFLICT)</h2>
+  <p>Upsert is the pattern "insert if not exists, update if it does." PostgreSQL's syntax is elegant.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>ON CONFLICT (Upsert)</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Insert, or update price/stock if product name already exists</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">products</span> (name, category, price, stock_qty)
+<span class="kw">VALUES</span> (<span class="str">'Wireless Mouse'</span>, <span class="str">'Electronics'</span>, <span class="num">1199.00</span>, <span class="num">200</span>)
+<span class="kw">ON CONFLICT</span> (name)
+<span class="kw">DO UPDATE SET</span>
+    price     = <span class="fn">EXCLUDED</span>.price,
+    stock_qty = <span class="fn">EXCLUDED</span>.stock_qty;
+
+<span class="cmt">-- EXCLUDED refers to the row that WOULD have been inserted</span>
+
+<span class="cmt">-- Or: do nothing on conflict</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">customers</span> (email, first_name, last_name)
+<span class="kw">VALUES</span> (<span class="str">'priya@example.com'</span>, <span class="str">'Priya'</span>, <span class="str">'S'</span>)
+<span class="kw">ON CONFLICT</span> (email) <span class="kw">DO NOTHING</span>;</pre>
+  </div>
+
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server MERGE vs PostgreSQL ON CONFLICT</h4>
+      <p>SQL Server uses <code>MERGE</code> for upsert operations. PostgreSQL's <code>INSERT ... ON CONFLICT</code> is simpler and safer. PostgreSQL 15+ also has a <code>MERGE</code> statement if you prefer that syntax.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(4)">← Data Types</button>
+    <button class="nav-btn primary" onclick="showModule(6)">SELECT — Querying Data →</button>
+  </div>
+</section>
+
+<!-- MODULE 6: SELECT -->
+<section class="module" id="mod-6">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>SELECT — Querying Data</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🛠 Hands-on</span></div>
+  </div>
+  <p>The SELECT statement is the most used SQL command. Mastering it means mastering PostgreSQL.</p>
+
+  <h2>Basic SELECT</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>SELECT examples</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Select all columns</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- Select specific columns</span>
+<span class="kw">SELECT</span> first_name, last_name, email <span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- With column aliases</span>
+<span class="kw">SELECT</span>
+    first_name  <span class="kw">AS</span> <span class="str">"First Name"</span>,
+    last_name   <span class="kw">AS</span> <span class="str">"Last Name"</span>,
+    email       <span class="kw">AS</span> <span class="str">"Email Address"</span>
+<span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- Computed columns</span>
+<span class="kw">SELECT</span>
+    first_name || <span class="str">' '</span> || last_name <span class="kw">AS</span> full_name,
+    <span class="fn">UPPER</span>(email) <span class="kw">AS</span> email_upper
+<span class="kw">FROM</span> <span class="tbl">customers</span>;</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-result"></div>Sample Output</div></div>
+    <pre><table class="result-table">
+  <tr><th>full_name</th><th>email_upper</th></tr>
+  <tr><td>Priya Sharma</td><td>PRIYA@EXAMPLE.COM</td></tr>
+  <tr><td>Rahul Verma</td><td>RAHUL@EXAMPLE.COM</td></tr>
+  <tr><td>Anjali Patel</td><td>ANJALI@EXAMPLE.COM</td></tr>
+</table></pre>
+  </div>
+
+  <h2>Filtering with WHERE</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>WHERE clause</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Exact match</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> city = <span class="str">'Hyderabad'</span>;
+
+<span class="cmt">-- Numeric comparisons</span>
+<span class="kw">SELECT</span> name, price <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">WHERE</span> price > <span class="num">5000</span>;
+<span class="kw">SELECT</span> name, price <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">WHERE</span> price <span class="kw">BETWEEN</span> <span class="num">1000</span> <span class="kw">AND</span> <span class="num">10000</span>;
+
+<span class="cmt">-- Pattern matching (LIKE)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> email <span class="kw">LIKE</span> <span class="str">'%@example.com'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">WHERE</span> name <span class="kw">ILIKE</span> <span class="str">'%laptop%'</span>;  <span class="cmt">-- ILIKE = case-insensitive</span>
+
+<span class="cmt">-- Multiple conditions</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">WHERE</span> category = <span class="str">'Electronics'</span>
+  <span class="kw">AND</span> price < <span class="num">2000</span>
+  <span class="kw">AND</span> is_active = <span class="kw2">TRUE</span>;
+
+<span class="cmt">-- IN list</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>
+<span class="kw">WHERE</span> city <span class="kw">IN</span> (<span class="str">'Hyderabad'</span>, <span class="str">'Mumbai'</span>, <span class="str">'Bangalore'</span>);
+
+<span class="cmt">-- NULL checks</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> phone <span class="kw">IS NULL</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> phone <span class="kw">IS NOT NULL</span>;</pre>
+  </div>
+
+  <h2>Sorting with ORDER BY</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>ORDER BY</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Sort ascending (default)</span>
+<span class="kw">SELECT</span> name, price <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">ORDER BY</span> price;
+
+<span class="cmt">-- Sort descending</span>
+<span class="kw">SELECT</span> name, price <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">ORDER BY</span> price <span class="kw">DESC</span>;
+
+<span class="cmt">-- Sort by multiple columns</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">ORDER BY</span> category <span class="kw">ASC</span>, price <span class="kw">DESC</span>;
+
+<span class="cmt">-- NULLs go last (default is NULLS LAST in PostgreSQL for DESC)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>
+<span class="kw">ORDER BY</span> city <span class="kw">NULLS LAST</span>;</pre>
+  </div>
+
+  <h2>LIMIT & OFFSET (Pagination)</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Pagination</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Get only first 10 rows (like SELECT TOP 10 in SQL Server)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">ORDER BY</span> price <span class="kw">DESC LIMIT</span> <span class="num">10</span>;
+
+<span class="cmt">-- Page 2: skip first 10, get next 10 (OFFSET = skip N rows)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">ORDER BY</span> product_id <span class="kw">LIMIT</span> <span class="num">10</span> <span class="kw">OFFSET</span> <span class="num">10</span>;
+
+<span class="cmt">-- Page 3:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">ORDER BY</span> product_id <span class="kw">LIMIT</span> <span class="num">10</span> <span class="kw">OFFSET</span> <span class="num">20</span>;</pre>
+  </div>
+
+  <h2>Useful String Functions</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>String functions</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">SELECT</span>
+    <span class="fn">UPPER</span>(first_name)                  <span class="kw">AS</span> upper_name,    <span class="cmt">-- PRIYA</span>
+    <span class="fn">LOWER</span>(email)                        <span class="kw">AS</span> lower_email,
+    <span class="fn">LENGTH</span>(first_name)                 <span class="kw">AS</span> name_length,   <span class="cmt">-- 5</span>
+    <span class="fn">TRIM</span>(<span class="str">'  hello  '</span>)                  <span class="kw">AS</span> trimmed,       <span class="cmt">-- 'hello'</span>
+    <span class="fn">SUBSTRING</span>(email, <span class="num">1</span>, <span class="fn">POSITION</span>(<span class="str">'@'</span> <span class="kw">IN</span> email)-<span class="num">1</span>) <span class="kw">AS</span> username,
+    <span class="fn">REPLACE</span>(phone, <span class="str">'-'</span>, <span class="str">''</span>)           <span class="kw">AS</span> clean_phone,
+    <span class="fn">LPAD</span>(customer_id::<span class="kw2">TEXT</span>, <span class="num">6</span>, <span class="str">'0'</span>)   <span class="kw">AS</span> padded_id      <span class="cmt">-- 000001</span>
+<span class="kw">FROM</span> <span class="tbl">customers</span>;</pre>
+  </div>
+
+  <h2>DISTINCT — Remove Duplicates</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>DISTINCT</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- List unique cities</span>
+<span class="kw">SELECT DISTINCT</span> city <span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- Count unique cities</span>
+<span class="kw">SELECT COUNT</span>(<span class="kw">DISTINCT</span> city) <span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- Unique combinations</span>
+<span class="kw">SELECT DISTINCT</span> category, is_active <span class="kw">FROM</span> <span class="tbl">products</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(5)">← INSERT</button>
+    <button class="nav-btn primary" onclick="showModule(7)">UPDATE & DELETE →</button>
+  </div>
+</section>
+
+<!-- MODULE 7: UPDATE & DELETE -->
+<section class="module" id="mod-7">
+  <div class="module-header">
+    <span class="module-badge badge-beginner">Beginner</span>
+    <h1>UPDATE & DELETE</h1>
+    <div class="module-meta"><span>📖 15 min</span><span>🛠 Hands-on</span></div>
+  </div>
+
+  <h2>UPDATE — Modifying Existing Data</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>UPDATE examples</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Update a single row</span>
+<span class="kw">UPDATE</span> <span class="tbl">customers</span>
+<span class="kw">SET</span> city = <span class="str">'Hyderabad'</span>, phone = <span class="str">'+91 98765 43210'</span>
+<span class="kw">WHERE</span> customer_id = <span class="num">1</span>;
+
+<span class="cmt">-- Update multiple rows matching a condition</span>
+<span class="kw">UPDATE</span> <span class="tbl">products</span>
+<span class="kw">SET</span> is_active = <span class="kw2">FALSE</span>
+<span class="kw">WHERE</span> stock_qty = <span class="num">0</span>;
+
+<span class="cmt">-- Update using a calculation</span>
+<span class="kw">UPDATE</span> <span class="tbl">products</span>
+<span class="kw">SET</span> price = price * <span class="num">1.10</span>  <span class="cmt">-- 10% price increase</span>
+<span class="kw">WHERE</span> category = <span class="str">'Electronics'</span>;
+
+<span class="cmt">-- UPDATE with RETURNING (see what changed)</span>
+<span class="kw">UPDATE</span> <span class="tbl">products</span>
+<span class="kw">SET</span> stock_qty = stock_qty + <span class="num">50</span>
+<span class="kw">WHERE</span> name = <span class="str">'Coffee Maker'</span>
+<span class="kw">RETURNING</span> name, stock_qty;</pre>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <h4>Always Use WHERE with UPDATE</h4>
+      <p>An UPDATE without a WHERE clause updates EVERY row in the table. Always add a WHERE condition. Best practice: run the equivalent SELECT first to verify which rows you'll affect, then change SELECT to UPDATE.</p>
+    </div>
+  </div>
+
+  <h2>DELETE — Removing Rows</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">DELETE examples</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Delete a specific row</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> customer_id = <span class="num">5</span>;
+
+<span class="cmt">-- Delete rows matching a condition</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">products</span>
+<span class="kw">WHERE</span> is_active = <span class="kw2">FALSE</span> <span class="kw">AND</span> stock_qty = <span class="num">0</span>;
+
+<span class="cmt">-- Delete with RETURNING (confirm what was deleted)</span>
+<span class="kw">DELETE FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> status = <span class="str">'cancelled'</span>
+  <span class="kw">AND</span> order_date < <span class="fn">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'1 year'</span>
+<span class="kw">RETURNING</span> order_id, order_date;</pre>
+  </div>
+
+  <h2>TRUNCATE — Fast Table Clear</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>TRUNCATE</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Remove ALL rows from a table (much faster than DELETE)</span>
+<span class="kw">TRUNCATE TABLE</span> <span class="tbl">orders</span>;
+
+<span class="cmt">-- Also reset the sequence (auto-increment back to 1)</span>
+<span class="kw">TRUNCATE TABLE</span> <span class="tbl">orders</span> <span class="kw">RESTART IDENTITY</span>;
+
+<span class="cmt">-- Truncate multiple tables</span>
+<span class="kw">TRUNCATE TABLE</span> <span class="tbl">orders</span>, <span class="tbl">customers</span> <span class="kw">CASCADE</span>;</pre>
+  </div>
+
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server vs PostgreSQL DELETE/TRUNCATE</h4>
+      <p>PostgreSQL's TRUNCATE is transactional (can be rolled back!) unlike SQL Server. Also, PostgreSQL has no <code>DELETE TOP(n)</code> syntax — use a subquery or CTE with LIMIT instead.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(6)">← SELECT</button>
+    <button class="nav-btn primary" onclick="showModule(8)">Filtering & Sorting →</button>
+  </div>
+</section>
+
+<!-- MODULE 8: FILTERING -->
+<section class="module" id="mod-8">
+  <div class="module-header">
+    <span class="module-badge badge-intermediate">Intermediate</span>
+    <h1>Filtering & Sorting — Deep Dive</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🛠 Hands-on</span></div>
+  </div>
+
+  <h2>Advanced WHERE Conditions</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Advanced filtering</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- CASE WHEN in SELECT (conditional logic)</span>
+<span class="kw">SELECT</span>
+    name,
+    price,
+    <span class="kw">CASE</span>
+        <span class="kw">WHEN</span> price < <span class="num">1000</span>  <span class="kw">THEN</span> <span class="str">'Budget'</span>
+        <span class="kw">WHEN</span> price < <span class="num">10000</span> <span class="kw">THEN</span> <span class="str">'Mid-range'</span>
+        <span class="kw">ELSE</span> <span class="str">'Premium'</span>
+    <span class="kw">END</span> <span class="kw">AS</span> price_tier
+<span class="kw">FROM</span> <span class="tbl">products</span>;
+
+<span class="cmt">-- Subquery in WHERE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>
+<span class="kw">WHERE</span> customer_id <span class="kw">IN</span> (
+    <span class="kw">SELECT DISTINCT</span> customer_id <span class="kw">FROM</span> <span class="tbl">orders</span>
+    <span class="kw">WHERE</span> total_amount > <span class="num">50000</span>
+);
+
+<span class="cmt">-- EXISTS subquery (often faster than IN for large sets)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">WHERE EXISTS</span> (
+    <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> <span class="tbl">orders</span> o
+    <span class="kw">WHERE</span> o.customer_id = c.customer_id
+      <span class="kw">AND</span> o.status = <span class="str">'delivered'</span>
+);</pre>
+  </div>
+
+  <h2>Date Filtering</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Date queries</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Orders from today</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> order_date::date = <span class="fn">CURRENT_DATE</span>;
+
+<span class="cmt">-- Orders in last 30 days</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> order_date >= <span class="fn">NOW</span>() - <span class="kw">INTERVAL</span> <span class="str">'30 days'</span>;
+
+<span class="cmt">-- Orders in a specific month</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> <span class="fn">DATE_TRUNC</span>(<span class="str">'month'</span>, order_date) = <span class="str">'2025-01-01'</span>;
+
+<span class="cmt">-- Extract parts of a date</span>
+<span class="kw">SELECT</span>
+    order_id,
+    <span class="fn">EXTRACT</span>(<span class="kw">YEAR</span>  <span class="kw">FROM</span> order_date) <span class="kw">AS</span> order_year,
+    <span class="fn">EXTRACT</span>(<span class="kw">MONTH</span> <span class="kw">FROM</span> order_date) <span class="kw">AS</span> order_month,
+    <span class="fn">EXTRACT</span>(<span class="kw">DOW</span>   <span class="kw">FROM</span> order_date) <span class="kw">AS</span> day_of_week  <span class="cmt">-- 0=Sun, 6=Sat</span>
+<span class="kw">FROM</span> <span class="tbl">orders</span>;</pre>
+  </div>
+
+  <h2>COALESCE — Handle NULLs</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>COALESCE & NULLIF</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- COALESCE returns the first non-NULL value (like ISNULL in SQL Server)</span>
+<span class="kw">SELECT</span>
+    first_name,
+    <span class="fn">COALESCE</span>(phone, <span class="str">'No phone'</span>)     <span class="kw">AS</span> phone,
+    <span class="fn">COALESCE</span>(city, country, <span class="str">'Unknown'</span>) <span class="kw">AS</span> location
+<span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- NULLIF returns NULL if two values are equal (avoids division by zero)</span>
+<span class="kw">SELECT</span>
+    total_amount / <span class="fn">NULLIF</span>(quantity, <span class="num">0</span>) <span class="kw">AS</span> unit_price
+<span class="kw">FROM</span> <span class="tbl">orders</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(7)">← UPDATE & DELETE</button>
+    <button class="nav-btn primary" onclick="showModule(9)">Joins →</button>
+  </div>
+</section>
+
+<!-- MODULE 9: JOINS -->
+<section class="module" id="mod-9">
+  <div class="module-header">
+    <span class="module-badge badge-intermediate">Intermediate</span>
+    <h1>Joins — Combining Tables</h1>
+    <div class="module-meta"><span>📖 30 min</span><span>🛠 Core Skill</span></div>
+  </div>
+
+  <p>Joins are how you combine data from multiple tables. This is where relational databases shine.</p>
+
+  <h2>INNER JOIN — Only Matching Rows</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>INNER JOIN</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Get orders WITH customer names (only customers who have orders)</span>
+<span class="kw">SELECT</span>
+    o.order_id,
+    o.order_date,
+    o.total_amount,
+    o.status,
+    c.first_name || <span class="str">' '</span> || c.last_name <span class="kw">AS</span> customer_name,
+    c.email
+<span class="kw">FROM</span> <span class="tbl">orders</span> o
+<span class="kw">INNER JOIN</span> <span class="tbl">customers</span> c <span class="kw">ON</span> o.customer_id = c.customer_id
+<span class="kw">ORDER BY</span> o.order_date <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>LEFT JOIN — All from Left Table</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>LEFT JOIN</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- ALL customers, with their orders (NULL if no orders)</span>
+<span class="kw">SELECT</span>
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    <span class="fn">COUNT</span>(o.order_id)           <span class="kw">AS</span> order_count,
+    <span class="fn">COALESCE</span>(<span class="fn">SUM</span>(o.total_amount), <span class="num">0</span>) <span class="kw">AS</span> total_spent
+<span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">LEFT JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">GROUP BY</span> c.customer_id, c.first_name, c.last_name
+<span class="kw">ORDER BY</span> total_spent <span class="kw">DESC</span>;
+
+<span class="cmt">-- Find customers with NO orders</span>
+<span class="kw">SELECT</span> c.* <span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">LEFT JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">WHERE</span> o.order_id <span class="kw">IS NULL</span>;</pre>
+  </div>
+
+  <h2>Joining 3 Tables</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">3-table join</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Create order_items table first</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">order_items</span> (
+    item_id    <span class="kw2">SERIAL</span>   <span class="kw">PRIMARY KEY</span>,
+    order_id   <span class="kw2">INTEGER</span>  <span class="kw">NOT NULL REFERENCES</span> <span class="tbl">orders</span>(order_id),
+    product_id <span class="kw2">INTEGER</span>  <span class="kw">NOT NULL REFERENCES</span> <span class="tbl">products</span>(product_id),
+    quantity   <span class="kw2">INTEGER</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="num">1</span>,
+    unit_price <span class="kw2">NUMERIC</span>(10,2)
+);
+
+<span class="cmt">-- Join customers → orders → order_items → products</span>
+<span class="kw">SELECT</span>
+    c.first_name || <span class="str">' '</span> || c.last_name <span class="kw">AS</span> customer,
+    o.order_id,
+    p.name                              <span class="kw">AS</span> product,
+    oi.quantity,
+    oi.unit_price,
+    oi.quantity * oi.unit_price         <span class="kw">AS</span> line_total
+<span class="kw">FROM</span> <span class="tbl">customers</span>   c
+<span class="kw">JOIN</span> <span class="tbl">orders</span>      o  <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">JOIN</span> <span class="tbl">order_items</span> oi <span class="kw">ON</span> o.order_id   = oi.order_id
+<span class="kw">JOIN</span> <span class="tbl">products</span>    p  <span class="kw">ON</span> oi.product_id = p.product_id
+<span class="kw">ORDER BY</span> o.order_id, p.name;</pre>
+  </div>
+
+  <h2>Join Types — Visual Summary</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Join Type</th><th>Returns</th><th>Use When</th></tr></thead>
+    <tbody>
+      <tr><td><code>INNER JOIN</code></td><td>Only rows that match in BOTH tables</td><td>You only want records with related data</td></tr>
+      <tr><td><code>LEFT JOIN</code></td><td>All from left + matching from right (NULL if no match)</td><td>You want ALL left records, even without matches</td></tr>
+      <tr><td><code>RIGHT JOIN</code></td><td>Matching from left + all from right (NULL if no match)</td><td>Rare — usually rewrite as LEFT JOIN</td></tr>
+      <tr><td><code>FULL OUTER JOIN</code></td><td>All rows from both tables, NULLs where no match</td><td>Finding rows in either table with no match</td></tr>
+      <tr><td><code>CROSS JOIN</code></td><td>Every combination of both tables (Cartesian product)</td><td>Generating test data, combinations</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(8)">← Filtering</button>
+    <button class="nav-btn primary" onclick="showModule(10)">Aggregations →</button>
+  </div>
+</section>
+
+<!-- MODULE 10: AGGREGATIONS -->
+<section class="module" id="mod-10">
+  <div class="module-header">
+    <span class="module-badge badge-intermediate">Intermediate</span>
+    <h1>Aggregations — GROUP BY & Analytics</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🛠 Hands-on</span></div>
+  </div>
+
+  <h2>Aggregate Functions</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Core aggregates</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Summary statistics on products</span>
+<span class="kw">SELECT</span>
+    <span class="fn">COUNT</span>(*)                    <span class="kw">AS</span> total_products,
+    <span class="fn">COUNT</span>(DISTINCT category)   <span class="kw">AS</span> unique_categories,
+    <span class="fn">MIN</span>(price)                  <span class="kw">AS</span> cheapest,
+    <span class="fn">MAX</span>(price)                  <span class="kw">AS</span> most_expensive,
+    <span class="fn">AVG</span>(price)::NUMERIC(10,2)   <span class="kw">AS</span> avg_price,
+    <span class="fn">SUM</span>(stock_qty)             <span class="kw">AS</span> total_stock
+<span class="kw">FROM</span> <span class="tbl">products</span>;</pre>
+  </div>
+
+  <h2>GROUP BY — Aggregate by Category</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>GROUP BY</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Sales by product category</span>
+<span class="kw">SELECT</span>
+    p.category,
+    <span class="fn">COUNT</span>(oi.item_id)            <span class="kw">AS</span> items_sold,
+    <span class="fn">SUM</span>(oi.quantity)             <span class="kw">AS</span> total_qty,
+    <span class="fn">SUM</span>(oi.quantity * oi.unit_price) <span class="kw">AS</span> revenue,
+    <span class="fn">AVG</span>(p.price)::NUMERIC(10,2)  <span class="kw">AS</span> avg_price
+<span class="kw">FROM</span> <span class="tbl">products</span>    p
+<span class="kw">JOIN</span> <span class="tbl">order_items</span> oi <span class="kw">ON</span> p.product_id = oi.product_id
+<span class="kw">GROUP BY</span> p.category
+<span class="kw">ORDER BY</span> revenue <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>HAVING — Filter on Aggregated Results</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">HAVING</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- WHERE filters BEFORE grouping, HAVING filters AFTER</span>
+
+<span class="cmt">-- Only categories with more than 5 products</span>
+<span class="kw">SELECT</span> category, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> product_count
+<span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">WHERE</span> is_active = <span class="kw2">TRUE</span>           <span class="cmt">-- applied before grouping</span>
+<span class="kw">GROUP BY</span> category
+<span class="kw">HAVING COUNT</span>(*) > <span class="num">5</span>             <span class="cmt">-- applied after grouping</span>
+<span class="kw">ORDER BY</span> product_count <span class="kw">DESC</span>;
+
+<span class="cmt">-- Top customers who spent over ₹1,00,000</span>
+<span class="kw">SELECT</span>
+    c.first_name || <span class="str">' '</span> || c.last_name <span class="kw">AS</span> customer,
+    <span class="fn">SUM</span>(o.total_amount) <span class="kw">AS</span> total_spent
+<span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">GROUP BY</span> c.customer_id, c.first_name, c.last_name
+<span class="kw">HAVING SUM</span>(o.total_amount) > <span class="num">100000</span>
+<span class="kw">ORDER BY</span> total_spent <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>SQL Query Execution Order</h2>
+  <div class="callout info">
+    <div class="callout-icon">📋</div>
+    <div class="callout-body">
+      <h4>The ORDER SQL Executes (not how you write it)</h4>
+      <p>1. <strong>FROM</strong> + <strong>JOIN</strong> — get the data sources &nbsp;&nbsp; 2. <strong>WHERE</strong> — filter rows &nbsp;&nbsp; 3. <strong>GROUP BY</strong> — group remaining rows &nbsp;&nbsp; 4. <strong>HAVING</strong> — filter groups &nbsp;&nbsp; 5. <strong>SELECT</strong> — pick columns &nbsp;&nbsp; 6. <strong>ORDER BY</strong> — sort &nbsp;&nbsp; 7. <strong>LIMIT/OFFSET</strong> — paginate</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(9)">← Joins</button>
+    <button class="nav-btn primary" onclick="showModule(11)">Indexes →</button>
+  </div>
+</section>
+
+<!-- MODULE 11: INDEXES -->
+<section class="module" id="mod-11">
+  <div class="module-header">
+    <span class="module-badge badge-intermediate">Intermediate</span>
+    <h1>Indexes — Supercharge Query Speed</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>⚡ Performance</span></div>
+  </div>
+  <p>An index is like a book's table of contents — it lets PostgreSQL find rows without reading every single row in the table.</p>
+
+  <h2>Creating Indexes</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Index creation</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Basic B-tree index (default, most common)</span>
+<span class="kw">CREATE INDEX</span> idx_customers_email
+    <span class="kw">ON</span> <span class="tbl">customers</span>(email);
+
+<span class="cmt">-- Composite index (multiple columns)</span>
+<span class="kw">CREATE INDEX</span> idx_orders_customer_date
+    <span class="kw">ON</span> <span class="tbl">orders</span>(customer_id, order_date);
+
+<span class="cmt">-- Unique index (ensures no duplicates + index)</span>
+<span class="kw">CREATE UNIQUE INDEX</span> idx_products_name
+    <span class="kw">ON</span> <span class="tbl">products</span>(name);
+
+<span class="cmt">-- Partial index (only index rows matching a condition)</span>
+<span class="cmt">-- Much smaller + faster for common filtered queries</span>
+<span class="kw">CREATE INDEX</span> idx_active_products
+    <span class="kw">ON</span> <span class="tbl">products</span>(category, price)
+    <span class="kw">WHERE</span> is_active = <span class="kw2">TRUE</span>;
+
+<span class="cmt">-- Create index CONCURRENTLY (no table lock — use on production!)</span>
+<span class="kw">CREATE INDEX CONCURRENTLY</span> idx_orders_status
+    <span class="kw">ON</span> <span class="tbl">orders</span>(status);
+
+<span class="cmt">-- Drop an index</span>
+<span class="kw">DROP INDEX</span> idx_customers_email;</pre>
+  </div>
+
+  <h2>Index Types</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Index Type</th><th>Best For</th><th>Example Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>B-tree</code> (default)</td><td>Equality, range, ORDER BY</td><td><code>WHERE price > 1000</code>, <code>ORDER BY created_at</code></td></tr>
+      <tr><td><code>GIN</code></td><td>Arrays, JSONB, full-text search</td><td><code>WHERE tags @> ARRAY['sale']</code></td></tr>
+      <tr><td><code>GiST</code></td><td>Geometric types, geographic data</td><td>PostGIS location queries</td></tr>
+      <tr><td><code>BRIN</code></td><td>Very large tables with sequential data</td><td>Timestamp columns in append-only logs</td></tr>
+      <tr><td><code>Hash</code></td><td>Equality only (=)</td><td><code>WHERE session_id = 'abc123'</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>EXPLAIN ANALYZE — See the Query Plan</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Query plan analysis</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- See how PostgreSQL plans to execute a query</span>
+<span class="kw">EXPLAIN</span> <span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> email = <span class="str">'priya@example.com'</span>;
+
+<span class="cmt">-- EXPLAIN ANALYZE actually runs the query and shows real timings</span>
+<span class="kw">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> customer_id = <span class="num">1</span>
+  <span class="kw">AND</span> order_date > <span class="str">'2025-01-01'</span>;
+
+<span class="cmt">-- Look for:
+-- "Index Scan" = GOOD (using your index)
+-- "Seq Scan"   = BAD on large tables (scanning every row)
+-- "cost=..."   = estimated cost (lower = better)
+-- "actual time=..." = real execution time in ms</span></pre>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <h4>Golden Rules for Indexes</h4>
+      <p>Index columns used in WHERE, JOIN ON, and ORDER BY. Don't over-index — each index slows down INSERT/UPDATE/DELETE. Prefer composite indexes to multiple single-column indexes. Use CONCURRENTLY on production to avoid locking.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(10)">← Aggregations</button>
+    <button class="nav-btn primary" onclick="showModule(12)">Constraints →</button>
+  </div>
+</section>
+
+<!-- MODULE 12: CONSTRAINTS -->
+<section class="module" id="mod-12">
+  <div class="module-header">
+    <span class="module-badge badge-intermediate">Intermediate</span>
+    <h1>Constraints — Data Integrity Rules</h1>
+    <div class="module-meta"><span>📖 15 min</span><span>🔒 Data Quality</span></div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>All constraint types</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">employees</span> (
+    employee_id   <span class="kw2">BIGSERIAL</span>       <span class="kw">PRIMARY KEY</span>,         <span class="cmt">-- PK: unique + not null</span>
+    email         <span class="kw2">VARCHAR</span>(255)    <span class="kw">UNIQUE NOT NULL</span>,       <span class="cmt">-- UNIQUE: no duplicates</span>
+    first_name    <span class="kw2">VARCHAR</span>(100)    <span class="kw">NOT NULL</span>,             <span class="cmt">-- NOT NULL required</span>
+    salary        <span class="kw2">NUMERIC</span>(12,2)   <span class="kw">CHECK</span> (salary >= <span class="num">0</span>),  <span class="cmt">-- CHECK: must be >= 0</span>
+    dept_id       <span class="kw2">INTEGER</span>         <span class="kw">REFERENCES</span> <span class="tbl">departments</span>(id), <span class="cmt">-- FK</span>
+    status        <span class="kw2">VARCHAR</span>(20)     <span class="kw">DEFAULT</span> <span class="str">'active'</span>,     <span class="cmt">-- DEFAULT value</span>
+    hire_date     <span class="kw2">DATE</span>            <span class="kw">DEFAULT</span> <span class="fn">CURRENT_DATE</span>,
+    <span class="cmt">-- Named constraint (easier to reference in errors)</span>
+    <span class="kw">CONSTRAINT</span> chk_status
+        <span class="kw">CHECK</span> (status <span class="kw">IN</span> (<span class="str">'active'</span>, <span class="str">'inactive'</span>, <span class="str">'on_leave'</span>))
+);
+
+<span class="cmt">-- Foreign key with ON DELETE behavior</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">orders</span>
+    <span class="kw">ADD CONSTRAINT</span> fk_orders_customer
+    <span class="kw">FOREIGN KEY</span> (customer_id) <span class="kw">REFERENCES</span> <span class="tbl">customers</span>(customer_id)
+    <span class="kw">ON DELETE CASCADE</span>   <span class="cmt">-- delete orders when customer is deleted</span>
+    <span class="kw">ON UPDATE CASCADE</span>;  <span class="cmt">-- update FK when PK changes</span></pre>
+  </div>
+
+  <div class="table-wrap"><table>
+    <thead><tr><th>ON DELETE option</th><th>Behavior</th></tr></thead>
+    <tbody>
+      <tr><td><code>RESTRICT</code> (default)</td><td>Error — prevents delete if child rows exist</td></tr>
+      <tr><td><code>CASCADE</code></td><td>Automatically deletes child rows</td></tr>
+      <tr><td><code>SET NULL</code></td><td>Sets FK column to NULL in child rows</td></tr>
+      <tr><td><code>SET DEFAULT</code></td><td>Sets FK column to its default value</td></tr>
+      <tr><td><code>NO ACTION</code></td><td>Like RESTRICT but checked at end of transaction</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(11)">← Indexes</button>
+    <button class="nav-btn primary" onclick="showModule(13)">Transactions →</button>
+  </div>
+</section>
+
+<!-- MODULE 13: TRANSACTIONS -->
+<section class="module" id="mod-13">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Transactions — ACID Guarantees</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🔒 Critical</span></div>
+  </div>
+  <p>A transaction groups multiple SQL statements so they succeed or fail together. This is the foundation of data integrity.</p>
+
+  <h2>Basic Transaction Syntax</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Transaction example</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Transfer money between accounts (classic example)</span>
+<span class="kw">BEGIN</span>;    <span class="cmt">-- Start transaction</span>
+
+    <span class="kw">UPDATE</span> <span class="tbl">accounts</span>
+    <span class="kw">SET</span> balance = balance - <span class="num">5000</span>
+    <span class="kw">WHERE</span> account_id = <span class="num">101</span>;   <span class="cmt">-- deduct from sender</span>
+
+    <span class="kw">UPDATE</span> <span class="tbl">accounts</span>
+    <span class="kw">SET</span> balance = balance + <span class="num">5000</span>
+    <span class="kw">WHERE</span> account_id = <span class="num">202</span>;   <span class="cmt">-- add to receiver</span>
+
+    <span class="kw">INSERT INTO</span> <span class="tbl">transfer_log</span> (from_id, to_id, amount)
+    <span class="kw">VALUES</span> (<span class="num">101</span>, <span class="num">202</span>, <span class="num">5000</span>);
+
+<span class="kw">COMMIT</span>;   <span class="cmt">-- All three statements succeed together</span>
+
+<span class="cmt">-- If anything fails, use ROLLBACK to undo everything:</span>
+<span class="kw">BEGIN</span>;
+    <span class="kw">UPDATE</span> ...;
+    <span class="kw">-- Error occurs here</span>
+<span class="kw">ROLLBACK</span>;  <span class="cmt">-- Undo all changes in this transaction</span></pre>
+  </div>
+
+  <h2>SAVEPOINT — Partial Rollback</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>SAVEPOINT</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">BEGIN</span>;
+
+    <span class="kw">INSERT INTO</span> <span class="tbl">orders</span> (...) <span class="kw">VALUES</span> (...);
+
+    <span class="kw">SAVEPOINT</span> after_order;   <span class="cmt">-- Bookmark this point</span>
+
+    <span class="kw">INSERT INTO</span> <span class="tbl">order_items</span> (...) <span class="kw">VALUES</span> (...);
+    <span class="cmt">-- This fails!</span>
+
+    <span class="kw">ROLLBACK TO</span> after_order; <span class="cmt">-- Undo back to savepoint (order still exists)</span>
+
+    <span class="cmt">-- Try again with corrected data</span>
+    <span class="kw">INSERT INTO</span> <span class="tbl">order_items</span> (...) <span class="kw">VALUES</span> (...);
+
+<span class="kw">COMMIT</span>;</pre>
+  </div>
+
+  <h2>Isolation Levels</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Level</th><th>Prevents</th><th>Use When</th></tr></thead>
+    <tbody>
+      <tr><td><code>READ COMMITTED</code> (default)</td><td>Dirty reads</td><td>Most OLTP applications</td></tr>
+      <tr><td><code>REPEATABLE READ</code></td><td>Dirty reads + non-repeatable reads</td><td>Reports, batch jobs</td></tr>
+      <tr><td><code>SERIALIZABLE</code></td><td>All anomalies — fully isolated</td><td>Financial, inventory systems</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Setting isolation level</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">BEGIN TRANSACTION ISOLATION LEVEL</span> <span class="kw2">REPEATABLE READ</span>;
+    <span class="kw">SELECT</span> <span class="fn">SUM</span>(balance) <span class="kw">FROM</span> <span class="tbl">accounts</span>;  <span class="cmt">-- consistent snapshot</span>
+<span class="kw">COMMIT</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(12)">← Constraints</button>
+    <button class="nav-btn primary" onclick="showModule(14)">Views & CTEs →</button>
+  </div>
+</section>
+
+<!-- MODULE 14: VIEWS & CTEs -->
+<section class="module" id="mod-14">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Views & CTEs — Reusable Queries</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🧩 Composition</span></div>
+  </div>
+
+  <h2>Views — Saved Queries</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>CREATE VIEW</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Create a view for a commonly used report</span>
+<span class="kw">CREATE VIEW</span> <span class="tbl">customer_order_summary</span> <span class="kw">AS</span>
+<span class="kw">SELECT</span>
+    c.customer_id,
+    c.first_name || <span class="str">' '</span> || c.last_name  <span class="kw">AS</span> customer_name,
+    c.email,
+    c.city,
+    <span class="fn">COUNT</span>(o.order_id)                   <span class="kw">AS</span> total_orders,
+    <span class="fn">COALESCE</span>(<span class="fn">SUM</span>(o.total_amount), <span class="num">0</span>)   <span class="kw">AS</span> lifetime_value,
+    <span class="fn">MAX</span>(o.order_date)                   <span class="kw">AS</span> last_order_date
+<span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">LEFT JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">GROUP BY</span> c.customer_id, c.first_name, c.last_name, c.email, c.city;
+
+<span class="cmt">-- Now use it like a table!</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customer_order_summary</span>
+<span class="kw">WHERE</span> lifetime_value > <span class="num">50000</span>
+<span class="kw">ORDER BY</span> lifetime_value <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>CTEs — Common Table Expressions</h2>
+  <p>CTEs (introduced with the <code>WITH</code> keyword) are like temporary named queries. They make complex queries readable and maintainable.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">WITH (CTE)</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Find customers whose total spend is above average</span>
+<span class="kw">WITH</span> customer_spend <span class="kw">AS</span> (
+    <span class="cmt">-- Step 1: Calculate total spend per customer</span>
+    <span class="kw">SELECT</span>
+        c.customer_id,
+        c.first_name || <span class="str">' '</span> || c.last_name <span class="kw">AS</span> name,
+        <span class="fn">SUM</span>(o.total_amount) <span class="kw">AS</span> total_spent
+    <span class="kw">FROM</span> <span class="tbl">customers</span> c
+    <span class="kw">JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+    <span class="kw">GROUP BY</span> c.customer_id, c.first_name, c.last_name
+),
+avg_spend <span class="kw">AS</span> (
+    <span class="cmt">-- Step 2: Calculate the average</span>
+    <span class="kw">SELECT AVG</span>(total_spent) <span class="kw">AS</span> avg_val <span class="kw">FROM</span> customer_spend
+)
+<span class="cmt">-- Step 3: Find customers above average</span>
+<span class="kw">SELECT</span> cs.name, cs.total_spent, a.avg_val
+<span class="kw">FROM</span> customer_spend cs, avg_spend a
+<span class="kw">WHERE</span> cs.total_spent > a.avg_val
+<span class="kw">ORDER BY</span> cs.total_spent <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>Recursive CTEs — Hierarchical Data</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Recursive CTE (org chart)</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Employee hierarchy (manager → reports)</span>
+<span class="kw">WITH RECURSIVE</span> org_chart <span class="kw">AS</span> (
+    <span class="cmt">-- Base case: top-level employees (no manager)</span>
+    <span class="kw">SELECT</span> employee_id, name, manager_id, <span class="num">0</span> <span class="kw">AS</span> level
+    <span class="kw">FROM</span> <span class="tbl">employees</span>
+    <span class="kw">WHERE</span> manager_id <span class="kw">IS NULL</span>
+
+    <span class="kw">UNION ALL</span>
+
+    <span class="cmt">-- Recursive case: find direct reports</span>
+    <span class="kw">SELECT</span> e.employee_id, e.name, e.manager_id, oc.level + <span class="num">1</span>
+    <span class="kw">FROM</span> <span class="tbl">employees</span> e
+    <span class="kw">JOIN</span> org_chart oc <span class="kw">ON</span> e.manager_id = oc.employee_id
+)
+<span class="kw">SELECT</span>
+    <span class="fn">REPEAT</span>(<span class="str">'  '</span>, level) || name <span class="kw">AS</span> hierarchy,
+    level
+<span class="kw">FROM</span> org_chart
+<span class="kw">ORDER BY</span> level, name;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(13)">← Transactions</button>
+    <button class="nav-btn primary" onclick="showModule(15)">Window Functions →</button>
+  </div>
+</section>
+
+<!-- MODULE 15: WINDOW FUNCTIONS -->
+<section class="module" id="mod-15">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Window Functions — Analytics Power</h1>
+    <div class="module-meta"><span>📖 30 min</span><span>📊 Analytics</span></div>
+  </div>
+  <p>Window functions perform calculations across a set of rows <em>related to the current row</em> — without collapsing them like GROUP BY does. This is one of PostgreSQL's most powerful features.</p>
+
+  <h2>ROW_NUMBER, RANK, DENSE_RANK</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Ranking functions</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">SELECT</span>
+    name,
+    category,
+    price,
+    <span class="fn">ROW_NUMBER</span>() <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> category <span class="kw">ORDER BY</span> price <span class="kw">DESC</span>) <span class="kw">AS</span> row_num,
+    <span class="fn">RANK</span>()       <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> category <span class="kw">ORDER BY</span> price <span class="kw">DESC</span>) <span class="kw">AS</span> rank,
+    <span class="fn">DENSE_RANK</span>() <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> category <span class="kw">ORDER BY</span> price <span class="kw">DESC</span>) <span class="kw">AS</span> dense_rank
+<span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">ORDER BY</span> category, price <span class="kw">DESC</span>;
+
+<span class="cmt">-- Get the #1 most expensive product in each category</span>
+<span class="kw">WITH</span> ranked <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> *, <span class="fn">RANK</span>() <span class="kw">OVER</span> (<span class="kw">PARTITION BY</span> category <span class="kw">ORDER BY</span> price <span class="kw">DESC</span>) <span class="kw">AS</span> rnk
+    <span class="kw">FROM</span> <span class="tbl">products</span>
+)
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> ranked <span class="kw">WHERE</span> rnk = <span class="num">1</span>;</pre>
+  </div>
+
+  <h2>Running Totals and Moving Averages</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Cumulative calculations</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">SELECT</span>
+    order_date::date            <span class="kw">AS</span> date,
+    total_amount,
+    <span class="cmt">-- Running total (cumulative sum)</span>
+    <span class="fn">SUM</span>(total_amount) <span class="kw">OVER</span> (
+        <span class="kw">ORDER BY</span> order_date
+    )                           <span class="kw">AS</span> running_total,
+    <span class="cmt">-- 7-day moving average</span>
+    <span class="fn">AVG</span>(total_amount) <span class="kw">OVER</span> (
+        <span class="kw">ORDER BY</span> order_date
+        <span class="kw">ROWS BETWEEN</span> <span class="num">6</span> <span class="kw">PRECEDING AND CURRENT ROW</span>
+    )::NUMERIC(10,2)            <span class="kw">AS</span> moving_avg_7d
+<span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">ORDER BY</span> order_date;</pre>
+  </div>
+
+  <h2>LAG / LEAD — Compare with Adjacent Rows</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>LAG & LEAD</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Month-over-month revenue change</span>
+<span class="kw">WITH</span> monthly <span class="kw">AS</span> (
+    <span class="kw">SELECT</span>
+        <span class="fn">DATE_TRUNC</span>(<span class="str">'month'</span>, order_date) <span class="kw">AS</span> month,
+        <span class="fn">SUM</span>(total_amount) <span class="kw">AS</span> revenue
+    <span class="kw">FROM</span> <span class="tbl">orders</span>
+    <span class="kw">GROUP BY</span> <span class="num">1</span>
+)
+<span class="kw">SELECT</span>
+    month,
+    revenue,
+    <span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> month) <span class="kw">AS</span> prev_month_revenue,
+    revenue - <span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> month) <span class="kw">AS</span> change,
+    <span class="fn">ROUND</span>(
+        (revenue - <span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> month))
+        / <span class="fn">NULLIF</span>(<span class="fn">LAG</span>(revenue) <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> month), <span class="num">0</span>) * <span class="num">100</span>,
+        <span class="num">1</span>
+    ) <span class="kw">AS</span> pct_change
+<span class="kw">FROM</span> monthly
+<span class="kw">ORDER BY</span> month;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(14)">← Views & CTEs</button>
+    <button class="nav-btn primary" onclick="showModule(16)">Stored Functions →</button>
+  </div>
+</section>
+
+<!-- MODULE 16: FUNCTIONS -->
+<section class="module" id="mod-16">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Stored Functions & Procedures</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🔧 Programmability</span></div>
+  </div>
+
+  <h2>Creating Functions (PL/pgSQL)</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Simple function</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Function: get full customer name</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">get_full_name</span>(p_customer_id <span class="kw2">INTEGER</span>)
+<span class="kw">RETURNS</span> <span class="kw2">TEXT</span>
+<span class="kw">LANGUAGE</span> plpgsql
+<span class="kw">AS</span> $$
+<span class="kw">DECLARE</span>
+    v_name <span class="kw2">TEXT</span>;
+<span class="kw">BEGIN</span>
+    <span class="kw">SELECT</span> first_name || <span class="str">' '</span> || last_name
+    <span class="kw">INTO</span> v_name
+    <span class="kw">FROM</span> <span class="tbl">customers</span>
+    <span class="kw">WHERE</span> customer_id = p_customer_id;
+
+    <span class="kw">RETURN</span> <span class="fn">COALESCE</span>(v_name, <span class="str">'Customer not found'</span>);
+<span class="kw">END</span>;
+$$;
+
+<span class="cmt">-- Call it:</span>
+<span class="kw">SELECT</span> <span class="fn">get_full_name</span>(<span class="num">1</span>);   <span class="cmt">-- Returns: 'Priya Sharma'</span></pre>
+  </div>
+
+  <h2>Stored Procedures</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Stored procedure</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Procedure: place an order with transaction handling</span>
+<span class="kw">CREATE OR REPLACE PROCEDURE</span> <span class="fn">place_order</span>(
+    p_customer_id  <span class="kw2">INTEGER</span>,
+    p_product_id   <span class="kw2">INTEGER</span>,
+    p_quantity     <span class="kw2">INTEGER</span>
+)
+<span class="kw">LANGUAGE</span> plpgsql
+<span class="kw">AS</span> $$
+<span class="kw">DECLARE</span>
+    v_price      <span class="kw2">NUMERIC</span>;
+    v_order_id   <span class="kw2">INTEGER</span>;
+    v_total      <span class="kw2">NUMERIC</span>;
+<span class="kw">BEGIN</span>
+    <span class="cmt">-- Get product price</span>
+    <span class="kw">SELECT</span> price <span class="kw">INTO</span> v_price
+    <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">WHERE</span> product_id = p_product_id;
+
+    v_total := v_price * p_quantity;
+
+    <span class="cmt">-- Create the order</span>
+    <span class="kw">INSERT INTO</span> <span class="tbl">orders</span> (customer_id, total_amount, status)
+    <span class="kw">VALUES</span> (p_customer_id, v_total, <span class="str">'pending'</span>)
+    <span class="kw">RETURNING</span> order_id <span class="kw">INTO</span> v_order_id;
+
+    <span class="cmt">-- Add order item</span>
+    <span class="kw">INSERT INTO</span> <span class="tbl">order_items</span> (order_id, product_id, quantity, unit_price)
+    <span class="kw">VALUES</span> (v_order_id, p_product_id, p_quantity, v_price);
+
+    <span class="cmt">-- Reduce stock</span>
+    <span class="kw">UPDATE</span> <span class="tbl">products</span>
+    <span class="kw">SET</span> stock_qty = stock_qty - p_quantity
+    <span class="kw">WHERE</span> product_id = p_product_id;
+
+    <span class="fn">RAISE NOTICE</span> <span class="str">'Order % created. Total: %'</span>, v_order_id, v_total;
+<span class="kw">END</span>;
+$$;
+
+<span class="cmt">-- Call with CALL:</span>
+<span class="kw">CALL</span> <span class="fn">place_order</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>);   <span class="cmt">-- customer 1 buys 3 of product 2</span></pre>
+  </div>
+
+  <h2>Triggers</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Trigger example</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Trigger: auto-update updated_at timestamp</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">set_updated_at</span>()
+<span class="kw">RETURNS TRIGGER LANGUAGE</span> plpgsql <span class="kw">AS</span> $$
+<span class="kw">BEGIN</span>
+    NEW.updated_at = <span class="fn">NOW</span>();
+    <span class="kw">RETURN</span> NEW;
+<span class="kw">END</span>;
+$$;
+
+<span class="kw">CREATE TRIGGER</span> trg_customers_updated
+    <span class="kw">BEFORE UPDATE ON</span> <span class="tbl">customers</span>
+    <span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">set_updated_at</span>();</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(15)">← Window Functions</button>
+    <button class="nav-btn primary" onclick="showModule(17)">JSON & JSONB →</button>
+  </div>
+</section>
+
+<!-- MODULE 17: JSON -->
+<section class="module" id="mod-17">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>JSON & JSONB — Document Storage</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🧩 Flexible Data</span></div>
+  </div>
+  <p>PostgreSQL's JSONB type lets you store and query JSON documents efficiently. Use JSONB (not JSON) — it's stored in binary, indexed, and much faster to query.</p>
+
+  <h2>Storing JSON Data</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>JSONB column</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">product_attributes</span> (
+    product_id   <span class="kw2">INTEGER</span> <span class="kw">PRIMARY KEY</span>,
+    attributes   <span class="kw2">JSONB</span>
+);
+
+<span class="kw">INSERT INTO</span> <span class="tbl">product_attributes</span> <span class="kw">VALUES</span>
+(1, <span class="str">'{"color":"silver","weight":"1.8kg","warranty":"2yr","ports":["USB-C","HDMI"]}'</span>),
+(2, <span class="str">'{"color":"black","dpi":3200,"wireless":true,"buttons":6}'</span>);</pre>
+  </div>
+
+  <h2>Querying JSON</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>JSON operators</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- -> returns JSON, ->> returns TEXT</span>
+<span class="kw">SELECT</span>
+    product_id,
+    attributes-><span class="str">'color'</span>       <span class="kw">AS</span> color_json,    <span class="cmt">-- "silver" (with quotes)</span>
+    attributes->><span class="str">'color'</span>      <span class="kw">AS</span> color_text,    <span class="cmt">-- silver (no quotes)</span>
+    attributes->><span class="str">'warranty'</span>   <span class="kw">AS</span> warranty
+<span class="kw">FROM</span> <span class="tbl">product_attributes</span>;
+
+<span class="cmt">-- Filter by JSON value</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">product_attributes</span>
+<span class="kw">WHERE</span> attributes->><span class="str">'color'</span> = <span class="str">'silver'</span>;
+
+<span class="cmt">-- Check if JSON contains a key/value</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">product_attributes</span>
+<span class="kw">WHERE</span> attributes @> <span class="str">'{"wireless": true}'</span>;
+
+<span class="cmt">-- Index JSONB for fast queries</span>
+<span class="kw">CREATE INDEX</span> idx_attrs_gin <span class="kw">ON</span> <span class="tbl">product_attributes</span> <span class="kw">USING GIN</span>(attributes);</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(16)">← Stored Functions</button>
+    <button class="nav-btn primary" onclick="showModule(18)">Performance & EXPLAIN →</button>
+  </div>
+</section>
+
+<!-- MODULE 18: PERFORMANCE -->
+<section class="module" id="mod-18">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Performance & EXPLAIN — Tuning Queries</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>⚡ Production</span></div>
+  </div>
+
+  <h2>Reading EXPLAIN Output</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-result"></div>EXPLAIN output example</div></div>
+    <pre><span class="cmt">EXPLAIN ANALYZE
+SELECT * FROM orders WHERE customer_id = 1;
+
+-- Output:
+-- Index Scan using idx_orders_customer_date on orders (cost=0.29..8.31 rows=3 width=76) (actual time=0.028..0.033 rows=3 loops=1)
+--   Index Cond: (customer_id = 1)
+-- Planning Time: 0.073 ms
+-- Execution Time: 0.051 ms   ← Fast! Index is being used ✅</span></pre>
+  </div>
+
+  <h2>Common Performance Anti-patterns</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Bad vs Good patterns</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- ❌ BAD: Function on indexed column prevents index use</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span> <span class="kw">WHERE</span> <span class="fn">DATE</span>(order_date) = <span class="str">'2025-01-15'</span>;
+
+<span class="cmt">-- ✅ GOOD: Range query allows index scan</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>
+<span class="kw">WHERE</span> order_date >= <span class="str">'2025-01-15'</span> <span class="kw">AND</span> order_date < <span class="str">'2025-01-16'</span>;
+
+<span class="cmt">-- ❌ BAD: Leading wildcard blocks index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> email <span class="kw">LIKE</span> <span class="str">'%example.com'</span>;
+
+<span class="cmt">-- ✅ GOOD: Trailing wildcard uses index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> email <span class="kw">LIKE</span> <span class="str">'priya%'</span>;
+
+<span class="cmt">-- ❌ BAD: SELECT * fetches all columns unnecessarily</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>;
+
+<span class="cmt">-- ✅ GOOD: Select only what you need</span>
+<span class="kw">SELECT</span> customer_id, email <span class="kw">FROM</span> <span class="tbl">customers</span>;</pre>
+  </div>
+
+  <h2>Key Performance Views</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Find slow queries</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Find unused indexes (candidates for removal)</span>
+<span class="kw">SELECT</span> schemaname, tablename, indexname, idx_scan
+<span class="kw">FROM</span> pg_stat_user_indexes
+<span class="kw">WHERE</span> idx_scan = <span class="num">0</span>
+<span class="kw">ORDER BY</span> tablename;
+
+<span class="cmt">-- Find tables with most sequential scans (missing indexes)</span>
+<span class="kw">SELECT</span> relname, seq_scan, idx_scan
+<span class="kw">FROM</span> pg_stat_user_tables
+<span class="kw">WHERE</span> seq_scan > idx_scan
+<span class="kw">ORDER BY</span> seq_scan <span class="kw">DESC</span>;
+
+<span class="cmt">-- Table sizes</span>
+<span class="kw">SELECT</span>
+    tablename,
+    <span class="fn">pg_size_pretty</span>(<span class="fn">pg_total_relation_size</span>(tablename::regclass)) <span class="kw">AS</span> total_size,
+    <span class="fn">pg_size_pretty</span>(<span class="fn">pg_relation_size</span>(tablename::regclass)) <span class="kw">AS</span> table_size
+<span class="kw">FROM</span> pg_tables
+<span class="kw">WHERE</span> schemaname = <span class="str">'public'</span>
+<span class="kw">ORDER BY</span> <span class="fn">pg_total_relation_size</span>(tablename::regclass) <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(17)">← JSON & JSONB</button>
+    <button class="nav-btn primary" onclick="showModule(19)">Logical Replication &#8594;</button>
+  </div>
+</section>
+
+<!-- MODULE 19: LOGICAL REPLICATION OVERVIEW -->
+<section class="module" id="mod-19">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Production</span>
+    <h1>Logical Replication &#8212; Concepts &amp; Overview</h1>
+    <div class="module-meta"><span>&#128214; 20 min</span><span>&#128260; High Level</span></div>
+  </div>
+  <p>Logical replication streams row-level changes (INSERT, UPDATE, DELETE) from one PostgreSQL database to one or more others in near real-time. Unlike physical replication which copies raw disk blocks, logical replication understands the data — so you can replicate just specific tables, filter rows, or send data to a completely different PostgreSQL version. This module gives you the mental model and vocabulary. The full setup guide is in the separate <em>PostgreSQL Logical Replication Guide</em> document.</p>
+
+  <h2>Why Logical Replication Exists &#8212; The Four Use Cases</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Use Case</th><th>What You Do</th><th>Why Logical Replication Fits</th></tr></thead>
+    <tbody>
+      <tr><td>Analytics offload</td><td>Replicate production tables to a separate analytics DB</td><td>Run heavy reports without touching the production server</td></tr>
+      <tr><td>Zero-downtime migration</td><td>Replicate old DB → new DB, switch app when in sync</td><td>Old and new run in parallel; cutover takes &lt;30 seconds</td></tr>
+      <tr><td>Disaster recovery</td><td>Keep a warm standby always current</td><td>Failover with seconds of data loss instead of hours</td></tr>
+      <tr><td>Selective sync</td><td>Send only certain tables or filtered rows to a subscriber</td><td>Physical replication copies everything; logical is surgical</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>How It Works &#8212; The Flow in Plain English</h2>
+  <p>Every change you make to a PostgreSQL table is first written to the <strong>WAL</strong> (Write-Ahead Log) &#8212; PostgreSQL's internal change log. Logical replication reads that WAL, decodes it from raw binary into readable row changes, filters it to only the tables you care about, and streams those changes over the network to one or more subscriber databases, which apply them immediately.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Component</th><th>Lives On</th><th>What It Does</th><th>SQL Server Equivalent</th></tr></thead>
+    <tbody>
+      <tr><td><strong>WAL</strong></td><td>Publisher</td><td>The raw change log &#8212; every INSERT/UPDATE/DELETE lands here first</td><td>Transaction log</td></tr>
+      <tr><td><strong>Publication</strong></td><td>Publisher</td><td>Declares which tables (and which operations) to replicate</td><td>Publication + Articles</td></tr>
+      <tr><td><strong>Replication Slot</strong></td><td>Publisher</td><td>Bookmarks the subscriber's position in WAL so no changes are lost</td><td>Distribution DB position pointer</td></tr>
+      <tr><td><strong>WAL Sender</strong></td><td>Publisher</td><td>Background process that streams decoded changes to each subscriber</td><td>Log Reader Agent + Distribution Agent</td></tr>
+      <tr><td><strong>Subscription</strong></td><td>Subscriber</td><td>Connects to a publication and receives the change stream</td><td>Subscription</td></tr>
+      <tr><td><strong>Apply Worker</strong></td><td>Subscriber</td><td>Receives changes and applies them to local tables</td><td>Distribution Agent (apply side)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Publication &#8212; What the Publisher Declares</h2>
+  <p>A publication is a named definition on the publisher that says: "replicate these tables, for these operations." One publisher can have multiple publications serving different subscribers with different table sets.</p>
+  <div class="code-block"><div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Publication — the essentials</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+  <pre><span class="cmt">-- Create a publication for specific tables</span>
+<span class="kw">CREATE PUBLICATION</span> pub_analytics
+    <span class="kw">FOR TABLE</span> <span class="tbl">orders</span>, <span class="tbl">customers</span>
+    <span class="kw">WITH</span> (publish = <span class="str">'insert, update, delete, truncate'</span>);
+
+<span class="cmt">-- Add a table later</span>
+<span class="kw">ALTER PUBLICATION</span> pub_analytics <span class="kw">ADD TABLE</span> <span class="tbl">products</span>;
+
+<span class="cmt">-- See what's published</span>
+<span class="kw">SELECT</span> pubname, tablename <span class="kw">FROM</span> pg_publication_tables;
+
+<span class="cmt">-- PG15+: replicate only matching rows (row filtering)</span>
+<span class="kw">CREATE PUBLICATION</span> pub_active
+    <span class="kw">FOR TABLE</span> <span class="tbl">orders</span> <span class="kw">WHERE</span> (status != <span class="str">'cancelled'</span>);</pre></div>
+
+  <h2>Subscription &#8212; What the Subscriber Creates</h2>
+  <p>A subscription is created on the subscriber side. It connects to the publisher, specifies which publication to follow, and starts receiving changes. When first created, it copies all existing rows (initial sync), then switches to live streaming.</p>
+  <div class="code-block"><div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Subscription — the essentials</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+  <pre><span class="cmt">-- Create subscription (run on SUBSCRIBER)</span>
+<span class="kw">CREATE SUBSCRIPTION</span> sub_analytics
+    <span class="kw">CONNECTION</span> <span class="str">'host=PUBLISHER_IP port=5432 dbname=mydb
+                user=replicator password=StrongPass! sslmode=require'</span>
+    <span class="kw">PUBLICATION</span> pub_analytics
+    <span class="kw">WITH</span> (copy_data = <span class="kw2">true</span>, slot_name = <span class="str">'slot_analytics'</span>);
+
+<span class="cmt">-- Check replication is live (r = live replication, d = copying data)</span>
+<span class="kw">SELECT</span> relid::regclass <span class="kw">AS</span> table_name,
+    <span class="kw">CASE</span> srsubstate
+        <span class="kw">WHEN</span> <span class="str">'r'</span> <span class="kw">THEN</span> <span class="str">'&#10003; Live'</span>
+        <span class="kw">WHEN</span> <span class="str">'d'</span> <span class="kw">THEN</span> <span class="str">'Copying...'</span>
+        <span class="kw">ELSE</span> srsubstate
+    <span class="kw">END</span> <span class="kw">AS</span> status
+<span class="kw">FROM</span> pg_subscription_rel;
+
+<span class="cmt">-- Pause and resume replication</span>
+<span class="kw">ALTER SUBSCRIPTION</span> sub_analytics <span class="kw">DISABLE</span>;  <span class="cmt">-- pause</span>
+<span class="kw">ALTER SUBSCRIPTION</span> sub_analytics <span class="kw">ENABLE</span>;   <span class="cmt">-- resume</span></pre></div>
+
+  <h2>The One Risk You Must Know</h2>
+  <div class="callout warning"><div class="callout-icon">&#9888;&#65039;</div><div class="callout-body"><h4>Inactive replication slot = publisher disk fills up</h4><p>When a subscriber goes offline, its <strong>replication slot</strong> stays on the publisher and keeps accumulating WAL (the change log) — waiting for the subscriber to reconnect and catch up. If the subscriber is down for hours or days, WAL can fill the publisher's disk and crash it. This is the single most dangerous operational risk. Always set <code>max_slot_wal_keep_size</code> as a safety cap, and alert on inactive slots daily.</p></div></div>
+
+  <h2>Key Differences from Physical (Streaming) Replication</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th></th><th>Logical Replication</th><th>Physical (Streaming) Replication</th></tr></thead>
+    <tbody>
+      <tr><td>What's copied</td><td>Decoded row changes &#8212; specific tables</td><td>Raw WAL bytes &#8212; entire cluster</td></tr>
+      <tr><td>Subscriber can write</td><td>Yes &#8212; subscriber is a normal read-write DB</td><td>No &#8212; standby is read-only</td></tr>
+      <tr><td>Cross-version</td><td>Yes &#8212; publisher and subscriber can differ</td><td>No &#8212; must be same major version</td></tr>
+      <tr><td>DDL replicated</td><td>No &#8212; must apply schema changes manually on both sides</td><td>Yes &#8212; everything is replicated</td></tr>
+      <tr><td>Selective tables</td><td>Yes &#8212; choose exactly which tables</td><td>No &#8212; all or nothing</td></tr>
+      <tr><td>Failover use</td><td>Not directly &#8212; subscriber is not a full standby</td><td>Yes &#8212; promote standby to primary</td></tr>
+      <tr><td>Cloud SQL HA</td><td>Separate feature for data distribution</td><td>Used internally by Cloud SQL HA</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout info"><div class="callout-icon">&#128218;</div><div class="callout-body"><h4>For full setup details</h4><p>This module covers the concepts and vocabulary. The complete end-to-end setup — including Cloud SQL flags, replication user creation, monitoring queries, troubleshooting errors, and best practices — is in the dedicated <strong>PostgreSQL Logical Replication Guide</strong> document.</p></div></div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(18)">&#8592; Performance &amp; EXPLAIN</button>
+    <button class="nav-btn primary" onclick="showModule(20)">Cloud SQL Cheatsheet &#8594;</button>
+  </div>
+</section>
+
+<!-- MODULE 20: CHEATSHEET -->
+<section class="module" id="mod-20">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Reference</span>
+    <h1>Cloud SQL Quick Reference Cheatsheet</h1>
+    <div class="module-meta"><span>📋 Reference</span><span>🚀 Production-Ready</span></div>
+  </div>
+
+  <h2>Essential Commands by Task</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Task</th><th>Command</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Check PostgreSQL version</td><td><code>SELECT version();</code></td><td>Any</td></tr>
+      <tr><td>List databases</td><td><code>SELECT datname FROM pg_database;</code></td><td>Any</td></tr>
+      <tr><td>Current database</td><td><code>SELECT current_database();</code></td><td>Any</td></tr>
+      <tr><td>List tables</td><td><code>SELECT tablename FROM pg_tables WHERE schemaname='public';</code></td><td>Any</td></tr>
+      <tr><td>Table row count</td><td><code>SELECT COUNT(*) FROM tablename;</code></td><td>Any</td></tr>
+      <tr><td>Table size</td><td><code>SELECT pg_size_pretty(pg_total_relation_size('table'));</code></td><td>Any</td></tr>
+      <tr><td>Active connections</td><td><code>SELECT * FROM pg_stat_activity;</code></td><td>Publisher</td></tr>
+      <tr><td>Check slots</td><td><code>SELECT * FROM pg_replication_slots;</code></td><td>Publisher</td></tr>
+      <tr><td>Check lag</td><td><code>SELECT * FROM pg_stat_subscription;</code></td><td>Subscriber</td></tr>
+      <tr><td>Pause replication</td><td><code>ALTER SUBSCRIPTION sub DISABLE;</code></td><td>Subscriber</td></tr>
+      <tr><td>Resume replication</td><td><code>ALTER SUBSCRIPTION sub ENABLE;</code></td><td>Subscriber</td></tr>
+      <tr><td>Add table to pub</td><td><code>ALTER PUBLICATION pub ADD TABLE t;</code></td><td>Publisher</td></tr>
+      <tr><td>Refresh subscription</td><td><code>ALTER SUBSCRIPTION sub REFRESH PUBLICATION WITH (copy_data=true);</code></td><td>Subscriber</td></tr>
+      <tr><td>Drop inactive slot</td><td><code>SELECT pg_drop_replication_slot('slot_name');</code></td><td>Publisher</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Data Type Quick Picker</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>You need to store...</th><th>Use this type</th></tr></thead>
+    <tbody>
+      <tr><td>Auto-incrementing primary key</td><td><code>BIGSERIAL</code> or <code>GENERATED ALWAYS AS IDENTITY</code></td></tr>
+      <tr><td>Money/prices</td><td><code>NUMERIC(12,2)</code></td></tr>
+      <tr><td>Short text (name, code)</td><td><code>VARCHAR(n)</code></td></tr>
+      <tr><td>Long text (description, notes)</td><td><code>TEXT</code></td></tr>
+      <tr><td>True/false flag</td><td><code>BOOLEAN</code></td></tr>
+      <tr><td>Date and time</td><td><code>TIMESTAMPTZ</code> (with timezone)</td></tr>
+      <tr><td>Flexible key-value data</td><td><code>JSONB</code></td></tr>
+      <tr><td>List of values</td><td><code>TEXT[]</code> or create a proper table</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Performance Checklist</h2>
+  <div class="callout tip">
+    <div class="callout-icon">✅</div>
+    <div class="callout-body">
+      <h4>Before Going to Production</h4>
+      <p>□ All tables have PRIMARY KEYs &nbsp;|&nbsp; □ Foreign keys indexed &nbsp;|&nbsp; □ WHERE columns indexed &nbsp;|&nbsp; □ EXPLAIN ANALYZE run on main queries &nbsp;|&nbsp; □ No N+1 query patterns &nbsp;|&nbsp; □ Connection pooling configured &nbsp;|&nbsp; □ max_slot_wal_keep_size set &nbsp;|&nbsp; □ Monitoring alerts on inactive slots, WAL size, long-running queries</p>
+    </div>
+  </div>
+
+  <h2>🎉 You've Completed the Guide!</h2>
+  <div class="callout info">
+    <div class="callout-icon">🚀</div>
+    <div class="callout-body">
+      <h4>What You've Learned</h4>
+      <p>You now understand PostgreSQL from fundamentals (databases, tables, CRUD) through intermediate (joins, aggregations, indexes) to advanced (transactions, window functions, JSON, and performance tuning). Keep practicing with real queries — proficiency comes from doing!</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(19)">&#8592; Logical Replication</button>
+    <button class="nav-btn primary" onclick="showModule(21)">Table Partitioning →</button>
+  </div>
+</section>
+
+
+<!-- MODULE 21: PARTITIONING -->
+<section class="module" id="mod-21">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Table Partitioning</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>⚡ Scalability</span></div>
+  </div>
+  <p>Partitioning splits a large table into smaller physical pieces (partitions) while still presenting it as one logical table. Queries only scan relevant partitions — dramatically faster on billion-row tables.</p>
+
+  <h2>When to Partition</h2>
+  <div class="callout tip">
+    <div class="callout-icon">💡</div>
+    <div class="callout-body">
+      <h4>Rule of Thumb</h4>
+      <p>Consider partitioning when a table exceeds ~50–100 million rows, queries almost always filter on one column (date, region, status), or you regularly archive/drop old data. Below that threshold, a good index is simpler and faster.</p>
+    </div>
+  </div>
+
+  <h2>Range Partitioning — by Date</h2>
+  <p>Most common pattern — partition orders, logs, or events by month or year.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Range partitioning by month</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- 1. Create the partitioned parent table</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_partitioned</span> (
+    order_id      <span class="kw2">BIGSERIAL</span>,
+    customer_id   <span class="kw2">INTEGER</span>       <span class="kw">NOT NULL</span>,
+    order_date    <span class="kw2">TIMESTAMPTZ</span>   <span class="kw">NOT NULL</span>,
+    total_amount  <span class="kw2">NUMERIC</span>(12,2),
+    status        <span class="kw2">VARCHAR</span>(50)
+) <span class="kw">PARTITION BY RANGE</span> (order_date);
+
+<span class="cmt">-- 2. Create individual partitions</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_2024_q1</span> <span class="kw">PARTITION OF</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-04-01'</span>);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_2024_q2</span> <span class="kw">PARTITION OF</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-04-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-07-01'</span>);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_2024_q3</span> <span class="kw">PARTITION OF</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-07-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-10-01'</span>);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_2024_q4</span> <span class="kw">PARTITION OF</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-10-01'</span>) <span class="kw">TO</span> (<span class="str">'2025-01-01'</span>);
+
+<span class="cmt">-- 3. Add indexes ON EACH PARTITION (or the parent)</span>
+<span class="kw">CREATE INDEX</span> <span class="kw">ON</span> <span class="tbl">orders_partitioned</span> (customer_id, order_date);
+
+<span class="cmt">-- 4. Query as normal — PostgreSQL auto-routes to correct partition</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders_partitioned</span>
+<span class="kw">WHERE</span> order_date >= <span class="str">'2024-06-01'</span> <span class="kw">AND</span> order_date < <span class="str">'2024-07-01'</span>;
+<span class="cmt">-- Only scans orders_2024_q2 — ignores all other partitions ✅</span></pre>
+  </div>
+
+  <h2>List Partitioning — by Region/Category</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>List partitioning by region</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">sales_by_region</span> (
+    sale_id   <span class="kw2">BIGSERIAL</span>,
+    region    <span class="kw2">VARCHAR</span>(50) <span class="kw">NOT NULL</span>,
+    amount    <span class="kw2">NUMERIC</span>(12,2)
+) <span class="kw">PARTITION BY LIST</span> (region);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">sales_south</span>  <span class="kw">PARTITION OF</span> <span class="tbl">sales_by_region</span>
+    <span class="kw">FOR VALUES IN</span> (<span class="str">'Hyderabad'</span>, <span class="str">'Chennai'</span>, <span class="str">'Bangalore'</span>, <span class="str">'Kochi'</span>);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">sales_west</span>   <span class="kw">PARTITION OF</span> <span class="tbl">sales_by_region</span>
+    <span class="kw">FOR VALUES IN</span> (<span class="str">'Mumbai'</span>, <span class="str">'Pune'</span>, <span class="str">'Ahmedabad'</span>);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">sales_north</span>  <span class="kw">PARTITION OF</span> <span class="tbl">sales_by_region</span>
+    <span class="kw">FOR VALUES IN</span> (<span class="str">'Delhi'</span>, <span class="str">'Noida'</span>, <span class="str">'Gurgaon'</span>);</pre>
+  </div>
+
+  <h2>Hash Partitioning — Distribute Evenly</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Hash partitioning</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Spread data evenly across 4 partitions by customer_id hash</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">events</span> (
+    event_id    <span class="kw2">BIGSERIAL</span>,
+    customer_id <span class="kw2">INTEGER</span> <span class="kw">NOT NULL</span>,
+    payload     <span class="kw2">JSONB</span>
+) <span class="kw">PARTITION BY HASH</span> (customer_id);
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">events_p0</span> <span class="kw">PARTITION OF</span> <span class="tbl">events</span> <span class="kw">FOR VALUES WITH</span> (modulus <span class="num">4</span>, remainder <span class="num">0</span>);
+<span class="kw">CREATE TABLE</span> <span class="tbl">events_p1</span> <span class="kw">PARTITION OF</span> <span class="tbl">events</span> <span class="kw">FOR VALUES WITH</span> (modulus <span class="num">4</span>, remainder <span class="num">1</span>);
+<span class="kw">CREATE TABLE</span> <span class="tbl">events_p2</span> <span class="kw">PARTITION OF</span> <span class="tbl">events</span> <span class="kw">FOR VALUES WITH</span> (modulus <span class="num">4</span>, remainder <span class="num">2</span>);
+<span class="kw">CREATE TABLE</span> <span class="tbl">events_p3</span> <span class="kw">PARTITION OF</span> <span class="tbl">events</span> <span class="kw">FOR VALUES WITH</span> (modulus <span class="num">4</span>, remainder <span class="num">3</span>);</pre>
+  </div>
+
+  <h2>Managing Partitions</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Partition management</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Add a new partition for 2025 Q1</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">orders_2025_q1</span> <span class="kw">PARTITION OF</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">FOR VALUES FROM</span> (<span class="str">'2025-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2025-04-01'</span>);
+
+<span class="cmt">-- Archive old partition: detach it (data stays, no longer in main table)</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">orders_partitioned</span>
+    <span class="kw">DETACH PARTITION</span> <span class="tbl">orders_2024_q1</span>;
+
+<span class="cmt">-- Drop old data instantly (drop the partition, not millions of DELETEs)</span>
+<span class="kw">DROP TABLE</span> <span class="tbl">orders_2024_q1</span>;  <span class="cmt">-- Instant! No row-by-row delete needed</span>
+
+<span class="cmt">-- View all partitions</span>
+<span class="kw">SELECT</span> inhrelid::regclass <span class="kw">AS</span> partition_name
+<span class="kw">FROM</span> pg_inherits
+<span class="kw">WHERE</span> inhparent = <span class="str">'orders_partitioned'</span>::regclass;</pre>
+  </div>
+
+  <div class="callout compare">
+    <div class="callout-icon">🔄</div>
+    <div class="callout-body">
+      <h4>SQL Server → PostgreSQL Partitioning</h4>
+      <p>SQL Server uses Partition Functions + Partition Schemes + file groups — a 3-step setup. PostgreSQL's <code>PARTITION BY</code> syntax is far cleaner and requires no file group configuration. Cloud SQL handles all storage automatically.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(20)">← Cloud SQL Cheatsheet</button>
+    <button class="nav-btn primary" onclick="showModule(22)">Row-Level Security →</button>
+  </div>
+</section>
+
+<!-- MODULE 22: ROW-LEVEL SECURITY -->
+<section class="module" id="mod-22">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Row-Level Security (RLS)</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🔒 Security</span></div>
+  </div>
+  <p>Row-Level Security lets you control which rows a user can see or modify — enforced at the database level, not the application level. Perfect for multi-tenant apps where each user should only see their own data.</p>
+
+  <h2>Why RLS Matters</h2>
+  <div class="card-grid">
+    <div class="card"><div class="card-icon">🏢</div><h4>Multi-tenant SaaS</h4><p>Tenant A can never accidentally see Tenant B's data — even with a buggy query.</p></div>
+    <div class="card"><div class="card-icon">🛡️</div><h4>Defense in Depth</h4><p>Even if app code has a bug, the DB enforces access rules independently.</p></div>
+    <div class="card"><div class="card-icon">✅</div><h4>Compliance</h4><p>GDPR, HIPAA, and SOC2 auditors love database-level access controls.</p></div>
+  </div>
+
+  <h2>Enable RLS and Create Policies</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div>Basic RLS setup</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- 1. Enable RLS on the table</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">orders</span> <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="cmt">-- 2. Create a policy: users can only see their OWN orders</span>
+<span class="kw">CREATE POLICY</span> orders_isolation <span class="kw">ON</span> <span class="tbl">orders</span>
+    <span class="kw">USING</span> (customer_id = <span class="fn">current_setting</span>(<span class="str">'app.current_user_id'</span>)::<span class="kw2">INTEGER</span>);
+
+<span class="cmt">-- 3. In your application, set the context before querying:</span>
+<span class="kw">SET</span> app.current_user_id = <span class="str">'42'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">orders</span>;  <span class="cmt">-- automatically filtered to customer_id = 42</span></pre>
+  </div>
+
+  <h2>Multi-tenant App — Full Example</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Multi-tenant RLS</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Add tenant_id to every table</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">ADD COLUMN</span> tenant_id <span class="kw2">INTEGER</span>;
+<span class="kw">ALTER TABLE</span> <span class="tbl">orders</span>     <span class="kw">ADD COLUMN</span> tenant_id <span class="kw2">INTEGER</span>;
+
+<span class="cmt">-- Enable RLS</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> <span class="tbl">orders</span>     <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="cmt">-- Separate SELECT and INSERT/UPDATE policies</span>
+<span class="kw">CREATE POLICY</span> tenant_isolation_customers <span class="kw">ON</span> <span class="tbl">customers</span>
+    <span class="kw">USING</span> (tenant_id = <span class="fn">current_setting</span>(<span class="str">'app.tenant_id'</span>)::<span class="kw2">INTEGER</span>)
+    <span class="kw">WITH CHECK</span> (tenant_id = <span class="fn">current_setting</span>(<span class="str">'app.tenant_id'</span>)::<span class="kw2">INTEGER</span>);
+<span class="cmt">-- USING  = filter on SELECT/UPDATE/DELETE
+-- WITH CHECK = validate on INSERT/UPDATE</span>
+
+<span class="cmt">-- Superusers bypass RLS by default. Force RLS even for table owner:</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">customers</span> <span class="kw">FORCE ROW LEVEL SECURITY</span>;
+
+<span class="cmt">-- Create a DB role for your app (never use superuser in app code!)</span>
+<span class="kw">CREATE ROLE</span> app_user <span class="kw">LOGIN PASSWORD</span> <span class="str">'AppPass123!'</span>;
+<span class="kw">GRANT SELECT, INSERT, UPDATE, DELETE ON</span> <span class="tbl">customers</span>, <span class="tbl">orders</span> <span class="kw">TO</span> app_user;</pre>
+  </div>
+
+  <h2>Node.js / Python Integration</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Node.js — set tenant context before query</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">// In your API handler (Node.js with pg library)</span>
+async function getOrders(tenantId, userId) {
+  const client = await pool.connect();
+  try {
+    <span class="cmt">// Set RLS context for this transaction</span>
+    await client.query(`SET LOCAL app.tenant_id = $1`, [tenantId]);
+    await client.query(`SET LOCAL app.current_user_id = $1`, [userId]);
+
+    <span class="cmt">// This query is automatically filtered by RLS</span>
+    const result = await client.query(`SELECT * FROM orders`);
+    return result.rows;  <span class="cmt">// only this tenant's orders</span>
+  } finally {
+    client.release();
+  }
+}</pre>
+  </div>
+
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <h4>Critical: Use SET LOCAL not SET</h4>
+      <p><code>SET LOCAL</code> scopes the setting to the current transaction only. <code>SET</code> persists for the entire session. In connection pools, sessions are reused — always use <code>SET LOCAL</code> inside a transaction to avoid tenant data leakage between requests.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(21)">← Table Partitioning</button>
+    <button class="nav-btn primary" onclick="showModule(23)">Extensions Deep Dive →</button>
+  </div>
+</section>
+
+<!-- MODULE 23: EXTENSIONS -->
+<section class="module" id="mod-23">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Extensions — Superpower Add-ons</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🔌 Ecosystem</span></div>
+  </div>
+  <p>PostgreSQL extensions add capabilities directly into the database engine. No separate services needed — install once and use in SQL.</p>
+
+  <h2>Managing Extensions</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Extension commands</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- List available extensions on your server</span>
+<span class="kw">SELECT</span> name, default_version, comment
+<span class="kw">FROM</span> pg_available_extensions
+<span class="kw">ORDER BY</span> name;
+
+<span class="cmt">-- Install an extension (requires superuser or Cloud SQL admin)</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pg_stat_statements;
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> uuid-ossp;
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pgcrypto;
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pg_trgm;
+
+<span class="cmt">-- View installed extensions</span>
+<span class="kw">SELECT</span> extname, extversion <span class="kw">FROM</span> pg_extension;
+
+<span class="cmt">-- Remove an extension</span>
+<span class="kw">DROP EXTENSION</span> <span class="kw">IF EXISTS</span> uuid-ossp;</pre>
+  </div>
+
+  <h2>pg_stat_statements — Find Your Slowest Queries</h2>
+  <p>The single most useful extension for performance tuning. Records statistics for every query executed.</p>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">pg_stat_statements setup & queries</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Enable in Cloud SQL via gcloud first:</span>
+<span class="cmt">-- gcloud sql instances patch YOUR_INSTANCE --database-flags pg_stat_statements.track=all</span>
+
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pg_stat_statements;
+
+<span class="cmt">-- TOP 10 slowest queries by total time</span>
+<span class="kw">SELECT</span>
+    <span class="fn">LEFT</span>(query, <span class="num">80</span>)                           <span class="kw">AS</span> query_snippet,
+    calls,
+    <span class="fn">ROUND</span>(total_exec_time::<span class="kw2">NUMERIC</span>, <span class="num">2</span>)        <span class="kw">AS</span> total_ms,
+    <span class="fn">ROUND</span>(mean_exec_time::<span class="kw2">NUMERIC</span>, <span class="num">2</span>)         <span class="kw">AS</span> avg_ms,
+    <span class="fn">ROUND</span>(stddev_exec_time::<span class="kw2">NUMERIC</span>, <span class="num">2</span>)       <span class="kw">AS</span> stddev_ms,
+    rows
+<span class="kw">FROM</span> pg_stat_statements
+<span class="kw">ORDER BY</span> total_exec_time <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>;
+
+<span class="cmt">-- Most frequently called queries</span>
+<span class="kw">SELECT LEFT</span>(query, <span class="num">80</span>), calls, <span class="fn">ROUND</span>(mean_exec_time::<span class="kw2">NUMERIC</span>, <span class="num">2</span>) <span class="kw">AS</span> avg_ms
+<span class="kw">FROM</span> pg_stat_statements
+<span class="kw">ORDER BY</span> calls <span class="kw">DESC LIMIT</span> <span class="num">10</span>;
+
+<span class="cmt">-- Reset statistics</span>
+<span class="kw">SELECT</span> <span class="fn">pg_stat_statements_reset</span>();</pre>
+  </div>
+
+  <h2>uuid-ossp — Generate UUIDs</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">UUID primary keys</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE EXTENSION IF NOT EXISTS</span> "uuid-ossp";
+
+<span class="kw">CREATE TABLE</span> <span class="tbl">api_keys</span> (
+    id          <span class="kw2">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> <span class="fn">uuid_generate_v4</span>(),
+    user_id     <span class="kw2">INTEGER</span>      <span class="kw">NOT NULL</span>,
+    key_hash    <span class="kw2">TEXT</span>         <span class="kw">NOT NULL</span>,
+    created_at  <span class="kw2">TIMESTAMPTZ</span> <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cmt">-- In PostgreSQL 13+ you can also use gen_random_uuid() without extension:</span>
+<span class="kw">SELECT</span> <span class="fn">gen_random_uuid</span>();   <span class="cmt">-- built-in, no extension needed</span></pre>
+  </div>
+
+  <h2>pg_trgm — Fast Fuzzy Text Search</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Fuzzy search with trigrams</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE EXTENSION IF NOT EXISTS</span> pg_trgm;
+
+<span class="cmt">-- GIN index for very fast ILIKE / similarity queries</span>
+<span class="kw">CREATE INDEX</span> idx_products_name_trgm
+    <span class="kw">ON</span> <span class="tbl">products</span> <span class="kw">USING GIN</span> (<span class="fn">name</span> gin_trgm_ops);
+
+<span class="cmt">-- Find products similar to a typo: "labtop"</span>
+<span class="kw">SELECT</span> name, <span class="fn">similarity</span>(name, <span class="str">'labtop'</span>) <span class="kw">AS</span> score
+<span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">WHERE</span> <span class="fn">similarity</span>(name, <span class="str">'labtop'</span>) > <span class="num">0.2</span>
+<span class="kw">ORDER BY</span> score <span class="kw">DESC</span>;
+
+<span class="cmt">-- Fast ILIKE — now uses the GIN index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">products</span> <span class="kw">WHERE</span> name <span class="kw">ILIKE</span> <span class="str">'%laptop%'</span>;</pre>
+  </div>
+
+  <h2>Full-Text Search — Built-in</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Full-text search</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Add a tsvector column for full-text search</span>
+<span class="kw">ALTER TABLE</span> <span class="tbl">products</span>
+    <span class="kw">ADD COLUMN</span> search_vector <span class="kw2">TSVECTOR</span>
+    <span class="kw">GENERATED ALWAYS AS</span> (
+        <span class="fn">to_tsvector</span>(<span class="str">'english'</span>, <span class="fn">COALESCE</span>(name, <span class="str">''</span>) || <span class="str">' '</span> || <span class="fn">COALESCE</span>(category, <span class="str">''</span>))
+    ) <span class="kw">STORED</span>;
+
+<span class="kw">CREATE INDEX</span> idx_products_fts <span class="kw">ON</span> <span class="tbl">products</span> <span class="kw">USING GIN</span>(search_vector);
+
+<span class="cmt">-- Search! Handles stemming: "laptops" finds "laptop"</span>
+<span class="kw">SELECT</span> name, category
+<span class="kw">FROM</span> <span class="tbl">products</span>
+<span class="kw">WHERE</span> search_vector @@ <span class="fn">plainto_tsquery</span>(<span class="str">'english'</span>, <span class="str">'wireless mouse'</span>)
+<span class="kw">ORDER BY</span> <span class="fn">ts_rank</span>(search_vector, <span class="fn">plainto_tsquery</span>(<span class="str">'english'</span>, <span class="str">'wireless mouse'</span>)) <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(22)">← Row-Level Security</button>
+    <button class="nav-btn primary" onclick="showModule(24)">pgvector — AI & Embeddings →</button>
+  </div>
+</section>
+
+<!-- MODULE 24: PGVECTOR -->
+<section class="module" id="mod-24">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>pgvector — AI & Vector Embeddings</h1>
+    <div class="module-meta"><span>📖 30 min</span><span>🤖 AI/ML</span></div>
+  </div>
+  <p>pgvector turns PostgreSQL into a vector database. This is the foundation of modern AI apps — semantic search, RAG (Retrieval-Augmented Generation), recommendations, and similarity matching. No need for a separate Pinecone or Weaviate!</p>
+
+  <h2>What Are Embeddings?</h2>
+  <div class="callout info">
+    <div class="callout-icon">🧠</div>
+    <div class="callout-body">
+      <h4>The Core Idea</h4>
+      <p>An embedding is a list of numbers (e.g. 1536 floats) that represents the <em>meaning</em> of text, image, or audio. Similar content produces similar vectors. pgvector stores these vectors and finds the nearest ones — "find me the 5 most semantically similar documents to this query."</p>
+    </div>
+  </div>
+
+  <h2>Setup</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Install pgvector</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Cloud SQL: enable via flag first</span>
+<span class="cmt">-- gcloud sql instances patch INSTANCE --database-flags cloudsql.enable_pgvector=on</span>
+
+<span class="cmt">-- Then install the extension</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> vector;
+
+<span class="cmt">-- Verify</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> pg_extension <span class="kw">WHERE</span> extname = <span class="str">'vector'</span>;</pre>
+  </div>
+
+  <h2>Store Embeddings</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Table with vector column</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Table for document embeddings (e.g. support articles, product descriptions)</span>
+<span class="kw">CREATE TABLE</span> <span class="tbl">documents</span> (
+    id          <span class="kw2">BIGSERIAL</span>    <span class="kw">PRIMARY KEY</span>,
+    title       <span class="kw2">TEXT</span>         <span class="kw">NOT NULL</span>,
+    content     <span class="kw2">TEXT</span>         <span class="kw">NOT NULL</span>,
+    embedding   vector(<span class="num">1536</span>),   <span class="cmt">-- 1536 dims = OpenAI text-embedding-3-small</span>
+    created_at  <span class="kw2">TIMESTAMPTZ</span> <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);
+
+<span class="cmt">-- Insert a document with its embedding</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">documents</span> (title, content, embedding)
+<span class="kw">VALUES</span> (
+    <span class="str">'PostgreSQL Indexing Guide'</span>,
+    <span class="str">'B-tree indexes are best for range queries...'</span>,
+    <span class="str">'[0.023, -0.011, 0.085, ...]'</span>::vector  <span class="cmt">-- from your embedding API</span>
+);</pre>
+  </div>
+
+  <h2>Vector Similarity Search</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Similarity operators</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- pgvector distance operators:
+-- &lt;->  Euclidean distance (L2)
+-- &lt;#>  Negative inner product
+-- &lt;=>  Cosine distance  ← best for text embeddings</span>
+
+<span class="cmt">-- Find top 5 most similar documents to a query embedding</span>
+<span class="kw">SELECT</span>
+    id,
+    title,
+    <span class="fn">LEFT</span>(content, <span class="num">100</span>) <span class="kw">AS</span> preview,
+    <span class="num">1</span> - (embedding <=> <span class="str">'[0.021, -0.009, ...]'</span>::vector) <span class="kw">AS</span> similarity_score
+<span class="kw">FROM</span> <span class="tbl">documents</span>
+<span class="kw">ORDER BY</span> embedding <=> <span class="str">'[0.021, -0.009, ...]'</span>::vector  <span class="cmt">-- ASC = most similar first</span>
+<span class="kw">LIMIT</span> <span class="num">5</span>;</pre>
+  </div>
+
+  <h2>Vector Index for Speed</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">HNSW and IVFFlat indexes</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- HNSW index — best accuracy + speed (recommended for most cases)</span>
+<span class="kw">CREATE INDEX</span> idx_documents_hnsw
+    <span class="kw">ON</span> <span class="tbl">documents</span> <span class="kw">USING hnsw</span> (embedding vector_cosine_ops)
+    <span class="kw">WITH</span> (m = <span class="num">16</span>, ef_construction = <span class="num">64</span>);
+
+<span class="cmt">-- IVFFlat index — better for huge datasets (millions of vectors)</span>
+<span class="kw">CREATE INDEX</span> idx_documents_ivf
+    <span class="kw">ON</span> <span class="tbl">documents</span> <span class="kw">USING ivfflat</span> (embedding vector_cosine_ops)
+    <span class="kw">WITH</span> (lists = <span class="num">100</span>);   <span class="cmt">-- lists ≈ sqrt(row_count)</span>
+
+<span class="cmt">-- Set search accuracy (higher = more accurate, slower)</span>
+<span class="kw">SET</span> hnsw.ef_search = <span class="num">100</span>;</pre>
+  </div>
+
+  <h2>Real-World RAG Pattern (Python + OpenAI)</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Python — RAG with pgvector</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt">import psycopg2
+from openai import OpenAI
+
+client = OpenAI()
+
+def embed(text):
+    res = client.embeddings.create(model="text-embedding-3-small", input=text)
+    return res.data[0].embedding
+
+def store_document(conn, title, content):
+    embedding = embed(content)
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO documents (title, content, embedding) VALUES (%s, %s, %s)",
+            (title, content, embedding)
+        )
+    conn.commit()
+
+def semantic_search(conn, query, top_k=5):
+    query_embedding = embed(query)
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT title, content,
+                   1 - (embedding &lt;=> %s::vector) AS score
+            FROM documents
+            ORDER BY embedding &lt;=> %s::vector
+            LIMIT %s
+        """, (query_embedding, query_embedding, top_k))
+        return cur.fetchall()
+
+<span class="cmt"># Usage:
+# conn = psycopg2.connect("host=... dbname=... user=... password=...")
+# store_document(conn, "My Article", "PostgreSQL is amazing...")
+# results = semantic_search(conn, "How do database indexes work?")</span></pre>
+  </div>
+
+  <h2>Hybrid Search — Vector + Keyword</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Combine semantic + keyword search</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt">-- RRF (Reciprocal Rank Fusion) — combine vector and full-text scores</span>
+<span class="kw">WITH</span>
+vector_results <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> id, <span class="fn">ROW_NUMBER</span>() <span class="kw">OVER</span> (<span class="kw">ORDER BY</span> embedding <=> <span class="str">'[...]'</span>::vector) <span class="kw">AS</span> rank
+    <span class="kw">FROM</span> <span class="tbl">documents</span> <span class="kw">LIMIT</span> <span class="num">20</span>
+),
+text_results <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> id, <span class="fn">ROW_NUMBER</span>() <span class="kw">OVER</span> (
+        <span class="kw">ORDER BY</span> <span class="fn">ts_rank</span>(search_vector, <span class="fn">plainto_tsquery</span>(<span class="str">'index performance'</span>)) <span class="kw">DESC</span>
+    ) <span class="kw">AS</span> rank
+    <span class="kw">FROM</span> <span class="tbl">documents</span>
+    <span class="kw">WHERE</span> search_vector @@ <span class="fn">plainto_tsquery</span>(<span class="str">'index performance'</span>) <span class="kw">LIMIT</span> <span class="num">20</span>
+)
+<span class="kw">SELECT</span>
+    d.title,
+    <span class="fn">COALESCE</span>(<span class="num">1.0</span>/(<span class="num">60</span>+vr.rank), <span class="num">0</span>) + <span class="fn">COALESCE</span>(<span class="num">1.0</span>/(<span class="num">60</span>+tr.rank), <span class="num">0</span>) <span class="kw">AS</span> rrf_score
+<span class="kw">FROM</span> <span class="tbl">documents</span> d
+<span class="kw">LEFT JOIN</span> vector_results vr <span class="kw">ON</span> d.id = vr.id
+<span class="kw">LEFT JOIN</span> text_results   tr <span class="kw">ON</span> d.id = tr.id
+<span class="kw">WHERE</span> vr.id <span class="kw">IS NOT NULL OR</span> tr.id <span class="kw">IS NOT NULL</span>
+<span class="kw">ORDER BY</span> rrf_score <span class="kw">DESC LIMIT</span> <span class="num">10</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(23)">← Extensions</button>
+    <button class="nav-btn primary" onclick="showModule(25)">PostGIS — Geo Queries →</button>
+  </div>
+</section>
+
+<!-- MODULE 25: POSTGIS -->
+<section class="module" id="mod-25">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>PostGIS — Geographic Data</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>🗺️ Geospatial</span></div>
+  </div>
+  <p>PostGIS adds geographic types and functions to PostgreSQL. Store locations, calculate distances, find points within areas — all in SQL. Used by mapping apps, logistics, delivery platforms.</p>
+
+  <h2>Setup</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Enable PostGIS</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE EXTENSION IF NOT EXISTS</span> postgis;
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> postgis_topology;  <span class="cmt">-- optional</span>
+
+<span class="cmt">-- Check version</span>
+<span class="kw">SELECT</span> <span class="fn">PostGIS_Version</span>();</pre>
+  </div>
+
+  <h2>Storing Locations</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Stores with location data</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">stores</span> (
+    store_id   <span class="kw2">SERIAL</span>  <span class="kw">PRIMARY KEY</span>,
+    name       <span class="kw2">TEXT</span>    <span class="kw">NOT NULL</span>,
+    city       <span class="kw2">TEXT</span>,
+    location   geometry(Point, <span class="num">4326</span>)  <span class="cmt">-- 4326 = WGS84 (standard GPS)</span>
+);
+
+<span class="cmt">-- SRID 4326: longitude first, then latitude</span>
+<span class="kw">INSERT INTO</span> <span class="tbl">stores</span> (name, city, location) <span class="kw">VALUES</span>
+('Hyderabad Central', 'Hyderabad', <span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">78.4867</span>, <span class="num">17.3850</span>), <span class="num">4326</span>)),
+('Mumbai Hub',        'Mumbai',    <span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">72.8777</span>, <span class="num">19.0760</span>), <span class="num">4326</span>)),
+('Bangalore Tech',    'Bangalore', <span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">77.5946</span>, <span class="num">12.9716</span>), <span class="num">4326</span>));
+
+<span class="cmt">-- Spatial index (critical for performance)</span>
+<span class="kw">CREATE INDEX</span> idx_stores_location <span class="kw">ON</span> <span class="tbl">stores</span> <span class="kw">USING GIST</span>(location);</pre>
+  </div>
+
+  <h2>Key Spatial Queries</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Distance, radius, nearest neighbour</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Distance between two cities (in metres)</span>
+<span class="kw">SELECT</span>
+    <span class="fn">ST_Distance</span>(
+        <span class="fn">ST_Transform</span>(a.location, <span class="num">3857</span>),
+        <span class="fn">ST_Transform</span>(b.location, <span class="num">3857</span>)
+    ) / <span class="num">1000</span> <span class="kw">AS</span> distance_km
+<span class="kw">FROM</span> stores a, stores b
+<span class="kw">WHERE</span> a.name = <span class="str">'Hyderabad Central'</span>
+  <span class="kw">AND</span> b.name = <span class="str">'Bangalore Tech'</span>;
+
+<span class="cmt">-- Find all stores within 500km of a user (lon, lat)</span>
+<span class="kw">SELECT</span> name, city,
+    <span class="fn">ST_Distance</span>(
+        <span class="fn">ST_Transform</span>(location, <span class="num">3857</span>),
+        <span class="fn">ST_Transform</span>(<span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">78.48</span>, <span class="num">17.38</span>), <span class="num">4326</span>), <span class="num">3857</span>)
+    ) / <span class="num">1000</span> <span class="kw">AS</span> km
+<span class="kw">FROM</span> stores
+<span class="kw">WHERE</span> <span class="fn">ST_DWithin</span>(
+    <span class="fn">ST_Transform</span>(location, <span class="num">3857</span>),
+    <span class="fn">ST_Transform</span>(<span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">78.48</span>, <span class="num">17.38</span>), <span class="num">4326</span>), <span class="num">3857</span>),
+    <span class="num">500000</span>   <span class="cmt">-- 500km in metres</span>
+)
+<span class="kw">ORDER BY</span> km;
+
+<span class="cmt">-- Nearest 3 stores (uses spatial index automatically)</span>
+<span class="kw">SELECT</span> name, city
+<span class="kw">FROM</span> stores
+<span class="kw">ORDER BY</span> location <->
+    <span class="fn">ST_SetSRID</span>(<span class="fn">ST_MakePoint</span>(<span class="num">78.48</span>, <span class="num">17.38</span>), <span class="num">4326</span>)
+<span class="kw">LIMIT</span> <span class="num">3</span>;</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(24)">← pgvector</button>
+    <button class="nav-btn primary" onclick="showModule(26)">Schema Migrations →</button>
+  </div>
+</section>
+
+<!-- MODULE 26: MIGRATIONS -->
+<section class="module" id="mod-26">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Schema Migrations — Flyway & Liquibase</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🔄 DevOps</span></div>
+  </div>
+  <p>A migration tool tracks and applies database schema changes in order — like Git for your database. Essential for teams so everyone's database stays in sync, and deployments are repeatable.</p>
+
+  <h2>Core Concept</h2>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-content"><h4>Write a migration file</h4><p>A numbered SQL file: <code>V1__create_customers.sql</code>, <code>V2__add_phone_column.sql</code></p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><h4>Run the tool</h4><p><code>flyway migrate</code> — tool checks which migrations have already run, applies only the new ones.</p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><h4>Checksum tracked</h4><p>Applied migrations are recorded in a <code>flyway_schema_history</code> table — never applied twice.</p></div></div>
+  </div>
+
+  <h2>Flyway Setup & Usage</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Flyway configuration</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt"># flyway.conf</span>
+flyway.url=jdbc:postgresql://localhost:5432/ecommerce
+flyway.user=postgres
+flyway.password=your_password
+flyway.locations=filesystem:./migrations</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">migrations/V1__initial_schema.sql</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">CREATE TABLE</span> <span class="tbl">customers</span> (
+    customer_id  <span class="kw2">BIGSERIAL</span>     <span class="kw">PRIMARY KEY</span>,
+    email        <span class="kw2">VARCHAR</span>(255)  <span class="kw">UNIQUE NOT NULL</span>,
+    first_name   <span class="kw2">VARCHAR</span>(100)  <span class="kw">NOT NULL</span>,
+    last_name    <span class="kw2">VARCHAR</span>(100)  <span class="kw">NOT NULL</span>,
+    created_at   <span class="kw2">TIMESTAMPTZ</span>  <span class="kw">DEFAULT</span> <span class="fn">NOW</span>()
+);</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">migrations/V2__add_phone_and_city.sql</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">ALTER TABLE</span> <span class="tbl">customers</span>
+    <span class="kw">ADD COLUMN</span> phone   <span class="kw2">VARCHAR</span>(20),
+    <span class="kw">ADD COLUMN</span> city    <span class="kw2">VARCHAR</span>(100),
+    <span class="kw">ADD COLUMN</span> country <span class="kw2">VARCHAR</span>(100) <span class="kw">DEFAULT</span> <span class="str">'India'</span>;</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Run Flyway</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># Apply all pending migrations</span>
+flyway migrate
+
+<span class="cmt"># Check migration status</span>
+flyway info
+
+<span class="cmt"># Validate checksums</span>
+flyway validate</pre>
+  </div>
+
+  <h2>Liquibase — XML/YAML/JSON Format</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">changelog.yaml (Liquibase)</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># db/changelog/001-create-customers.yaml</span>
+databaseChangeLog:
+  - changeSet:
+      id: 001
+      author: your_name
+      changes:
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: customer_id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+              - column:
+                  name: email
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true</pre>
+  </div>
+
+  <h2>Zero-Downtime Migration Tips</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Operation</th><th>Safe?</th><th>Best Practice</th></tr></thead>
+    <tbody>
+      <tr><td>Add nullable column</td><td>✅ Safe</td><td>Always add as nullable first, backfill, then add NOT NULL</td></tr>
+      <tr><td>Add NOT NULL column</td><td>⚠️ Locks table</td><td>Add nullable → backfill → add constraint with NOT VALID → VALIDATE</td></tr>
+      <tr><td>Add index</td><td>✅ Safe</td><td>Always use <code>CREATE INDEX CONCURRENTLY</code></td></tr>
+      <tr><td>Drop column</td><td>⚠️ Check app first</td><td>Remove from app code first, deploy, then drop column</td></tr>
+      <tr><td>Rename column</td><td>❌ Breaking</td><td>Add new column → copy data → update app → drop old column</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(25)">← PostGIS</button>
+    <button class="nav-btn primary" onclick="showModule(27)">Connection Pooling →</button>
+  </div>
+</section>
+
+<!-- MODULE 27: PGBOUNCER -->
+<section class="module" id="mod-27">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Connection Pooling with PgBouncer</h1>
+    <div class="module-meta"><span>📖 20 min</span><span>⚡ Scalability</span></div>
+  </div>
+  <p>PostgreSQL creates a new OS process for every connection. At 500+ connections this eats RAM and CPU. PgBouncer sits in front of PostgreSQL and reuses a small pool of real connections for thousands of app connections.</p>
+
+  <h2>The Problem PgBouncer Solves</h2>
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <h4>Without Pooling</h4>
+      <p>A Node.js app with 10 instances × 20 connections each = 200 PostgreSQL processes. Scale to 50 instances and you have 1000 processes consuming ~1GB RAM just for connection overhead. PostgreSQL starts rejecting connections. Your app crashes.</p>
+    </div>
+  </div>
+
+  <h2>PgBouncer Pooling Modes</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Mode</th><th>Connection reuse</th><th>Supports</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Transaction</strong> ⭐</td><td>After each transaction</td><td>Most apps</td><td>Recommended for most web apps</td></tr>
+      <tr><td><strong>Session</strong></td><td>After session disconnect</td><td>Everything</td><td>Apps using session-level features (temp tables, SET)</td></tr>
+      <tr><td><strong>Statement</strong></td><td>After each statement</td><td>Simple queries</td><td>Read-only, simple workloads only</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <h4>Transaction mode limitations</h4>
+      <p>In transaction mode, <code>SET LOCAL</code>, prepared statements, and advisory locks don't work across transactions because connections are swapped. Use session mode if your app relies on these — or configure your ORM accordingly (Prisma, Sequelize have pgbouncer modes).</p>
+    </div>
+  </div>
+
+  <h2>PgBouncer Configuration</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">pgbouncer.ini</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">[databases]</span>
+<span class="cmt"># Virtual database name = real connection details</span>
+ecommerce = host=127.0.0.1 port=5432 dbname=ecommerce
+
+<span class="cmt">[pgbouncer]</span>
+listen_port = 6432          <span class="cmt">; app connects to 6432, not 5432</span>
+listen_addr = 127.0.0.1
+auth_type   = md5
+auth_file   = /etc/pgbouncer/userlist.txt
+
+pool_mode        = transaction   <span class="cmt">; recommended</span>
+max_client_conn  = 1000          <span class="cmt">; max app connections to PgBouncer</span>
+default_pool_size = 25           <span class="cmt">; real connections per database/user</span>
+min_pool_size     = 5
+reserve_pool_size = 5
+server_idle_timeout = 600
+
+<span class="cmt">; Logging</span>
+log_connections = 0
+log_disconnections = 0</pre>
+  </div>
+
+  <h2>Cloud SQL + PgBouncer</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Running PgBouncer as a sidecar</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># Run PgBouncer in Docker alongside your app</span>
+docker run -d \
+  --name pgbouncer \
+  -e POSTGRESQL_HOST=your-cloud-sql-ip \
+  -e POSTGRESQL_PORT=5432 \
+  -e POSTGRESQL_DATABASE=ecommerce \
+  -e POSTGRESQL_USERNAME=app_user \
+  -e POSTGRESQL_PASSWORD=secret \
+  -e PGBOUNCER_POOL_MODE=transaction \
+  -e PGBOUNCER_MAX_CLIENT_CONN=1000 \
+  -e PGBOUNCER_DEFAULT_POOL_SIZE=25 \
+  -p 6432:6432 \
+  bitnami/pgbouncer:latest
+
+<span class="cmt"># App now connects to localhost:6432 instead of Cloud SQL directly</span></pre>
+  </div>
+
+  <h2>Monitor PgBouncer</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">PgBouncer admin console</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt">-- Connect to PgBouncer admin: psql -p 6432 -U pgbouncer pgbouncer</span>
+
+<span class="kw">SHOW</span> POOLS;    <span class="cmt">-- pool stats: cl_active, sv_active, sv_idle</span>
+<span class="kw">SHOW</span> CLIENTS;  <span class="cmt">-- connected application clients</span>
+<span class="kw">SHOW</span> SERVERS;  <span class="cmt">-- real PostgreSQL connections</span>
+<span class="kw">SHOW</span> STATS;    <span class="cmt">-- requests/sec, avg query time</span>
+<span class="kw">RELOAD</span>;        <span class="cmt">-- reload config without restart</span></pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(26)">← Schema Migrations</button>
+    <button class="nav-btn primary" onclick="showModule(28)">Backup & Recovery →</button>
+  </div>
+</section>
+
+<!-- MODULE 28: BACKUP -->
+<section class="module" id="mod-28">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Backup & Recovery</h1>
+    <div class="module-meta"><span>📖 25 min</span><span>🛡️ Critical</span></div>
+  </div>
+  <p>Your backup strategy defines your maximum data loss (RPO) and maximum recovery time (RTO). Know these tools thoroughly — you'll need them on the worst day.</p>
+
+  <h2>pg_dump — Logical Backup</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">pg_dump commands</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># Backup entire database to a file</span>
+pg_dump -h localhost -U postgres -d ecommerce \
+  -F c \               <span class="cmt"># custom format (compressed, best option)</span>
+  -f ecommerce_backup.dump
+
+<span class="cmt"># Backup to plain SQL (readable)</span>
+pg_dump -h localhost -U postgres -d ecommerce \
+  -F p \               <span class="cmt"># plain text SQL</span>
+  -f ecommerce_backup.sql
+
+<span class="cmt"># Backup specific tables only</span>
+pg_dump -h localhost -U postgres -d ecommerce \
+  -t customers -t orders \
+  -F c -f partial_backup.dump
+
+<span class="cmt"># Backup schema only (no data)</span>
+pg_dump -h localhost -U postgres -d ecommerce \
+  --schema-only -F p -f schema_only.sql
+
+<span class="cmt"># Backup data only (no DDL)</span>
+pg_dump -h localhost -U postgres -d ecommerce \
+  --data-only -F c -f data_only.dump</pre>
+  </div>
+
+  <h2>pg_restore — Restore from Backup</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">pg_restore commands</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># Create target database first</span>
+createdb -h localhost -U postgres ecommerce_restored
+
+<span class="cmt"># Restore from custom format dump</span>
+pg_restore -h localhost -U postgres \
+  -d ecommerce_restored \
+  --no-owner \         <span class="cmt"># don't restore original ownership</span>
+  --jobs 4 \           <span class="cmt"># parallel restore (4 threads)</span>
+  ecommerce_backup.dump
+
+<span class="cmt"># Restore from plain SQL</span>
+psql -h localhost -U postgres -d ecommerce_restored \
+  -f ecommerce_backup.sql
+
+<span class="cmt"># Restore only specific tables</span>
+pg_restore -h localhost -U postgres -d ecommerce_restored \
+  -t customers -t orders \
+  ecommerce_backup.dump</pre>
+  </div>
+
+  <h2>Cloud SQL — Automated Backups</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-bash"></div">Cloud SQL backup commands</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre"><span class="cmt"># Create an on-demand backup</span>
+gcloud sql backups create --instance=YOUR_INSTANCE
+
+<span class="cmt"># List all backups</span>
+gcloud sql backups list --instance=YOUR_INSTANCE
+
+<span class="cmt"># Restore to a new instance from a backup</span>
+gcloud sql instances restore-backup TARGET_INSTANCE \
+  --backup-instance=SOURCE_INSTANCE \
+  --backup-id=BACKUP_ID
+
+<span class="cmt"># Point-in-time recovery (PITR) — restore to any second in the past</span>
+gcloud sql instances clone SOURCE_INSTANCE TARGET_INSTANCE \
+  --point-in-time="2025-06-18T10:30:00.000Z"
+
+<span class="cmt"># Enable PITR on your instance</span>
+gcloud sql instances patch YOUR_INSTANCE \
+  --enable-point-in-time-recovery \
+  --retained-transaction-log-days=7</pre>
+  </div>
+
+  <h2>Backup Strategy Reference</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method</th><th>RPO</th><th>RTO</th><th>Best For</th></tr></thead>
+    <tbody>
+      <tr><td>Cloud SQL automated backups</td><td>Up to 24h data loss</td><td>15–60 min</td><td>Daily protection, simple setup</td></tr>
+      <tr><td>Cloud SQL PITR</td><td>Seconds</td><td>15–60 min</td><td>Accidental deletes, precise recovery</td></tr>
+      <tr><td>pg_dump (daily cron)</td><td>Up to 24h</td><td>Minutes–hours</td><td>Portable backups, cross-region copies</td></tr>
+      <tr><td>Physical replica (read replica)</td><td>Near-zero</td><td>Seconds (promote)</td><td>High availability, read scaling</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Test Your Backups!</h2>
+  <div class="callout warning">
+    <div class="callout-icon">⚠️</div>
+    <div class="callout-body">
+      <h4>Untested backups are not backups</h4>
+      <p>Schedule a monthly restore drill to a test instance. Verify row counts, run key queries, check that your app connects. An untested backup that fails during a real disaster is worse than no backup — you'll have wasted time you don't have.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(27)">← Connection Pooling</button>
+    <button class="nav-btn primary" onclick="showModule(29)">Query Optimization →</button>
+  </div>
+</section>
+
+<!-- MODULE 29: QUERY OPTIMIZATION -->
+<section class="module" id="mod-29">
+  <div class="module-header">
+    <span class="module-badge badge-advanced">Advanced</span>
+    <h1>Query Optimization — Deep Dive</h1>
+    <div class="module-meta"><span>📖 35 min</span><span>⚡ Expert Level</span></div>
+  </div>
+  <p>When a query is slow, you need a systematic process to find and fix the bottleneck. This module gives you that exact playbook.</p>
+
+  <h2>Step 1 — Read EXPLAIN Output</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">EXPLAIN ANALYZE BUFFERS</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="kw">EXPLAIN</span> (ANALYZE, BUFFERS, FORMAT TEXT)
+<span class="kw">SELECT</span>
+    c.first_name, c.last_name,
+    <span class="fn">COUNT</span>(o.order_id) <span class="kw">AS</span> order_count
+<span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">JOIN</span> <span class="tbl">orders</span> o <span class="kw">ON</span> c.customer_id = o.customer_id
+<span class="kw">WHERE</span> o.order_date >= <span class="str">'2025-01-01'</span>
+<span class="kw">GROUP BY</span> c.customer_id
+<span class="kw">HAVING COUNT</span>(o.order_id) > <span class="num">5</span>;
+
+<span class="cmt">-- Key things to look for:
+-- ✅ "Index Scan"      → good, using index
+-- ⚠️ "Seq Scan"       → full table scan, may need index
+-- ⚠️ "Hash Join"      → usually fine but watch for large hash tables
+-- ❌ "Nested Loop"    → on large tables = slow (O(n²))
+-- ❌ rows=1 actual=50000 → bad statistics, run ANALYZE
+-- ✅ "Buffers: shared hit=200" → data from cache (fast)
+-- ❌ "Buffers: shared read=200" → data from disk (slow)</span></pre>
+  </div>
+
+  <h2>Step 2 — Fix Bad Estimates with ANALYZE</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Statistics maintenance</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Update statistics for the planner (run after bulk loads)</span>
+<span class="kw">ANALYZE</span> <span class="tbl">customers</span>;
+<span class="kw">ANALYZE</span>;  <span class="cmt">-- all tables</span>
+
+<span class="cmt">-- VACUUM removes dead rows and updates visibility map</span>
+<span class="kw">VACUUM ANALYZE</span> <span class="tbl">orders</span>;
+
+<span class="cmt">-- VACUUM FULL reclaims disk space (locks table — use with care)</span>
+<span class="kw">VACUUM FULL</span> <span class="tbl">orders</span>;
+
+<span class="cmt">-- Check table bloat (dead tuples)</span>
+<span class="kw">SELECT</span> relname, n_live_tup, n_dead_tup,
+    <span class="fn">ROUND</span>(n_dead_tup * <span class="num">100.0</span> / <span class="fn">NULLIF</span>(n_live_tup + n_dead_tup, <span class="num">0</span>), <span class="num">1</span>) <span class="kw">AS</span> dead_pct
+<span class="kw">FROM</span> pg_stat_user_tables
+<span class="kw">WHERE</span> n_dead_tup > <span class="num">1000</span>
+<span class="kw">ORDER BY</span> n_dead_tup <span class="kw">DESC</span>;</pre>
+  </div>
+
+  <h2>Step 3 — Common Query Rewrites</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Slow → Fast rewrites</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- ❌ SLOW: correlated subquery runs once per row</span>
+<span class="kw">SELECT</span> c.*, (
+    <span class="kw">SELECT COUNT</span>(*) <span class="kw">FROM</span> <span class="tbl">orders</span> o <span class="kw">WHERE</span> o.customer_id = c.customer_id
+) <span class="kw">AS</span> order_count
+<span class="kw">FROM</span> <span class="tbl">customers</span> c;
+
+<span class="cmt">-- ✅ FAST: single aggregation + join</span>
+<span class="kw">SELECT</span> c.*, <span class="fn">COALESCE</span>(oc.order_count, <span class="num">0</span>) <span class="kw">AS</span> order_count
+<span class="kw">FROM</span> <span class="tbl">customers</span> c
+<span class="kw">LEFT JOIN</span> (
+    <span class="kw">SELECT</span> customer_id, <span class="fn">COUNT</span>(*) <span class="kw">AS</span> order_count
+    <span class="kw">FROM</span> <span class="tbl">orders</span> <span class="kw">GROUP BY</span> customer_id
+) oc <span class="kw">ON</span> c.customer_id = oc.customer_id;
+
+<span class="cmt">-- ❌ SLOW: OR prevents index use</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>
+<span class="kw">WHERE</span> city = <span class="str">'Hyderabad'</span> <span class="kw">OR</span> city = <span class="str">'Mumbai'</span> <span class="kw">OR</span> city = <span class="str">'Bangalore'</span>;
+
+<span class="cmt">-- ✅ FAST: IN list uses index</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span>
+<span class="kw">WHERE</span> city = <span class="kw">ANY</span>(ARRAY[<span class="str">'Hyderabad'</span>, <span class="str">'Mumbai'</span>, <span class="str">'Bangalore'</span>]);
+
+<span class="cmt">-- ❌ SLOW: COUNT(*) on large table = full scan</span>
+<span class="kw">SELECT COUNT</span>(*) <span class="kw">FROM</span> <span class="tbl">orders</span>;
+
+<span class="cmt">-- ✅ FAST: estimated count (good enough for dashboards)</span>
+<span class="kw">SELECT</span> reltuples::<span class="kw2">BIGINT</span> <span class="kw">AS</span> approx_count
+<span class="kw">FROM</span> pg_class <span class="kw">WHERE</span> relname = <span class="str">'orders'</span>;</pre>
+  </div>
+
+  <h2>Step 4 — Index Strategies</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Advanced index patterns</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Covering index: include extra columns to avoid table lookup</span>
+<span class="kw">CREATE INDEX</span> idx_orders_covering
+    <span class="kw">ON</span> <span class="tbl">orders</span> (customer_id, order_date)
+    <span class="kw">INCLUDE</span> (total_amount, status);
+<span class="cmt">-- Query only hits the index — no table access needed:
+-- SELECT total_amount, status FROM orders WHERE customer_id=1</span>
+
+<span class="cmt">-- Expression index: index on computed value</span>
+<span class="kw">CREATE INDEX</span> idx_customers_email_lower
+    <span class="kw">ON</span> <span class="tbl">customers</span> (<span class="fn">LOWER</span>(email));
+<span class="cmt">-- Now this uses the index:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="tbl">customers</span> <span class="kw">WHERE</span> <span class="fn">LOWER</span>(email) = <span class="str">'priya@example.com'</span>;
+
+<span class="cmt">-- Partial index: only index rows that are queried often</span>
+<span class="kw">CREATE INDEX</span> idx_orders_pending
+    <span class="kw">ON</span> <span class="tbl">orders</span> (customer_id, order_date)
+    <span class="kw">WHERE</span> status = <span class="str">'pending'</span>;
+<span class="cmt">-- Much smaller index — only pending orders (maybe 1% of rows)</span></pre>
+  </div>
+
+  <h2>Step 5 — Connection & Config Tuning</h2>
+  <div class="code-block">
+    <div class="code-header"><div class="code-label"><div class="dot dot-sql"></div">Key configuration parameters</div><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre><span class="cmt">-- Check current config</span>
+<span class="kw">SELECT</span> name, setting, unit, context
+<span class="kw">FROM</span> pg_settings
+<span class="kw">WHERE</span> name <span class="kw">IN</span> (
+    <span class="str">'shared_buffers'</span>,         <span class="cmt">-- RAM for data cache (set to 25% of total RAM)</span>
+    <span class="str">'work_mem'</span>,               <span class="cmt">-- per-sort RAM (8-64MB, careful with connections)</span>
+    <span class="str">'effective_cache_size'</span>,   <span class="cmt">-- hint to planner (set to 75% of total RAM)</span>
+    <span class="str">'maintenance_work_mem'</span>,   <span class="cmt">-- for VACUUM/CREATE INDEX (256MB+)</span>
+    'max_parallel_workers_per_gather'  <span class="cmt">-- parallel query workers</span>
+);
+
+<span class="cmt">-- Temporarily increase work_mem for a complex query</span>
+<span class="kw">SET</span> work_mem = <span class="str">'256MB'</span>;
+<span class="kw">SELECT</span> ... <span class="cmt">-- your heavy query</span>;
+<span class="kw">RESET</span> work_mem;</pre>
+  </div>
+
+  <h2>The Optimization Checklist</h2>
+  <div class="callout tip">
+    <div class="callout-icon">✅</div>
+    <div class="callout-body">
+      <h4>Systematic Approach — In Order</h4>
+      <p>
+        1. Run <code>EXPLAIN (ANALYZE, BUFFERS)</code> — read the actual plan<br>
+        2. Look for Seq Scans on large tables → add index<br>
+        3. Check row estimates vs actuals → run <code>ANALYZE</code> if way off<br>
+        4. Look for correlated subqueries → rewrite as JOIN<br>
+        5. Check for function calls on indexed columns → use expression indexes<br>
+        6. Check for missing covering columns → add INCLUDE columns<br>
+        7. Check <code>pg_stat_statements</code> for top time-consumers<br>
+        8. For complex reports: use materialized views, pre-aggregate with cron
+      </p>
+    </div>
+  </div>
+
+  <h2>🎉 Guide Complete — All 30 Modules!</h2>
+  <div class="callout info">
+    <div class="callout-icon">🚀</div>
+    <div class="callout-body">
+      <h4>You're Production-Ready</h4>
+      <p>You've covered everything from CREATE TABLE to pgvector AI embeddings, from basic SELECT to query plan optimization, from manual backups to Cloud SQL PITR. This is the full stack of PostgreSQL knowledge — from first query to enterprise production.</p>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="showModule(28)">← Backup & Recovery</button>
+    <button class="nav-btn primary" onclick="showModule(0)">Back to Start 🏠</button>
+  </div>
+</section>
+
+</main>
+
+<script>
+let visited = new Set([0]);
+const TOTAL = 30;
+
+function showModule(n) {
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('mod-'+n).classList.add('active');
+  const nav = document.getElementById('nav-'+n);
+  if (nav) { nav.classList.add('active'); nav.classList.add('done'); }
+  document.getElementById('main').scrollTo({top:0,behavior:'smooth'});
+  visited.add(n);
+  updateProgress();
+}
+
+function updateProgress() {
+  const pct = Math.round(visited.size / TOTAL * 100);
+  document.getElementById('prog-fill').style.width = pct+'%';
+  document.getElementById('prog-pct').textContent = pct+'%';
+  visited.forEach(n => {
+    const nav = document.getElementById('nav-'+n);
+    if (nav) nav.classList.add('done');
+  });
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1800);
+  });
+}
+
+function quiz(btn, result) {
+  const box = btn.closest('.quiz-box');
+  box.querySelectorAll('.quiz-opt').forEach(b => { b.disabled = true; });
+  btn.classList.add(result);
+  const feedbacks = box.querySelectorAll('.quiz-feedback');
+  feedbacks.forEach(f => f.classList.remove('show'));
+  const target = result === 'correct' ? box.querySelector('.quiz-feedback.ok') : box.querySelector('.quiz-feedback.no');
+  if (target) target.classList.add('show');
+}
+
+updateProgress();
+</script>
+</body>
+</html>
