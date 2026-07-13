@@ -1,0 +1,139 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-07-13",
+  "totalScripts": 130,
+  "platforms": [
+    "AWS",
+    "Azure",
+    "GCP",
+    "MSSQLServer",
+    "PostgreSQL"
+  ],
+  "categories": [
+    "backup",
+    "performance",
+    "monitoring",
+    "administration",
+    "replication",
+    "security",
+    "troubleshooting",
+    "migration"
+  ],
+  "scripts": [
+    {
+      "id": "aws-rds-backup-001",
+      "name": "Create RDS Automated Backup",
+      "type": "Bash",
+      "platform": "AWS",
+      "category": "backup",
+      "complexity": "simple",
+      "status": "planning",
+      "path": "AWS/RDS/backup-management/",
+      "description": "Setup automated daily backups for RDS instances",
+      "tags": [
+        "RDS",
+        "backup",
+        "automation",
+        "production"
+      ],
+      "prerequisites": [
+        "AWS CLI installed",
+        "RDS Admin permissions",
+        "S3 bucket for backups"
+      ]
+    },
+    {
+      "id": "azure-sql-backup-001",
+      "name": "Azure SQL Automated Backup",
+      "type": "PowerShell",
+      "platform": "Azure",
+      "category": "backup",
+      "complexity": "simple",
+      "status": "planning",
+      "path": "Azure/SQL-Database/backup-recovery/",
+      "description": "Configure automated backups for Azure SQL Database",
+      "tags": [
+        "Azure SQL",
+        "backup",
+        "automation"
+      ],
+      "prerequisites": [
+        "Azure CLI or PowerShell",
+        "SQL DB Contributor role",
+        "Storage account for backups"
+      ]
+    },
+    {
+      "id": "gcp-cloudsql-backup-001",
+      "name": "GCP Cloud SQL Backup",
+      "type": "Bash",
+      "platform": "GCP",
+      "category": "backup",
+      "complexity": "simple",
+      "status": "planning",
+      "path": "GCP/Cloud-SQL/backup-recovery/",
+      "description": "Create and manage Cloud SQL backups",
+      "tags": [
+        "Cloud SQL",
+        "backup",
+        "GCP"
+      ],
+      "prerequisites": [
+        "gcloud SDK installed",
+        "Cloud SQL Admin role",
+        "Google Cloud project"
+      ]
+    },
+    {
+      "id": "mssql-backup-001",
+      "name": "SQL Server Full Backup",
+      "type": "T-SQL",
+      "platform": "MSSQLServer",
+      "category": "backup",
+      "complexity": "simple",
+      "status": "active",
+      "path": "MSSQLServer/Shrink,Backup and Restore/",
+      "description": "Create full database backup to disk",
+      "tags": [
+        "MSSQL",
+        "backup",
+        "onprem"
+      ],
+      "prerequisites": [
+        "SQL Server 2016+",
+        "Backup disk space available",
+        "BACKUP DATABASE permission"
+      ]
+    },
+    {
+      "id": "postgres-backup-001",
+      "name": "PostgreSQL Full Database Backup",
+      "type": "PL/pgSQL",
+      "platform": "PostgreSQL",
+      "category": "backup",
+      "complexity": "simple",
+      "status": "planning",
+      "path": "PostgreSQL/administration/",
+      "description": "Create full backup using pg_dump",
+      "tags": [
+        "PostgreSQL",
+        "backup",
+        "onprem"
+      ],
+      "prerequisites": [
+        "PostgreSQL 10+",
+        "pg_dump utility",
+        "Backup directory write access"
+      ]
+    }
+  ],
+  "metadata": {
+    "description": "Metadata index for Multi-Cloud Database Administration Toolkit",
+    "purpose": "Enable automated discovery and organization of scripts",
+    "maintainers": [
+      "Vishnu Pyda"
+    ],
+    "repository": "https://github.com/Vishnupyda007/Multi-Cloud-Database-Administration-Toolkit",
+    "license": "MIT"
+  }
+}
