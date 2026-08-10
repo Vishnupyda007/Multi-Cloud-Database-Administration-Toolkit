@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  mssql-demo:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: mssql-demo
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_PID=Developer
+      - SA_PASSWORD=YourStrong!Passw0rd
+    ports:
+      - "14333:1433"
+    volumes:
+      - ./scripts:/scripts
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourStrong!Passw0rd' -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      retries: 5
+
+# Notes:
+# - Uses port 14333 on the host to avoid conflicts with a local SQL Server instance.
+# - Change SA_PASSWORD in the demo scripts before running in a shared environment.
